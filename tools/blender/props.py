@@ -15,6 +15,7 @@ from lib import *
 TRAIN_W = 2.0
 TRAIN_H = 2.6
 COACH_L = 12.0
+RAMP_L = 6.0
 PROPS = []
 _cursor_x = 0.0
 
@@ -199,17 +200,18 @@ def barrier_high():
 
 
 def barrier_mid():
-    """Horizontal bar barrier - jump over OR roll under (gap below 1.0, top at 1.5)."""
-    red = mat("bar_red", "#e0382b")
-    white = mat("bar_white", "#f7f7f7")
+    """Police tape strung between two poles at head height - duck under (or super-jump)."""
+    yellow = mat("tape_yellow", "#f5c400")
     dark = mat("pr_dark", "#2b2b2b")
+    white = mat("bar_white", "#f7f7f7")
     o = []
-    o.append(box("bar", (TRAIN_W, 0.14, 0.34), (0, 0, 1.30), white, bevel=0.02))
-    for i in range(4):
-        o.append(box("stripe", (0.24, 0.16, 0.36), (-0.75 + i * 0.5, 0, 1.30), red))
+    o.append(box("tape", (TRAIN_W, 0.04, 0.22), (0, 0, 1.62), yellow))
+    for i in range(5):
+        o.append(box("tape_txt", (0.18, 0.05, 0.10), (-0.8 + i * 0.4, 0, 1.62), dark))
     for sx in (-1, 1):
-        o.append(box("leg", (0.10, 0.10, 1.5), (sx * 0.92, 0, 0.75), dark))
-        o.append(box("foot", (0.20, 0.50, 0.06), (sx * 0.92, 0, 0.03), dark))
+        o.append(cyl("pole", 0.05, 1.85, (sx * 0.95, 0, 0.93), white, verts=8))
+        o.append(cyl("pole_base", 0.22, 0.08, (sx * 0.95, 0, 0.04), dark, verts=10))
+        o.append(box("pole_stripe", (0.11, 0.11, 0.3), (sx * 0.95, 0, 1.2), mat("bar_red", "#e0382b")))
     register(o, "barrier_mid")
 
 
@@ -473,13 +475,304 @@ def rickshaw():
     register(o, "rickshaw")
 
 
+
+def gantry():
+    """Overhead catenary gantry spanning the three lanes."""
+    steel = mat("gantry_steel", "#7d8791")
+    dark = mat("pr_dark", "#2b2b2b")
+    o = [cyl("post_l", 0.12, 6.0, (-4.1, 0, 3.0), steel, verts=8), cyl("post_r", 0.12, 6.0, (4.1, 0, 3.0), steel, verts=8),
+         box("beam", (8.5, 0.14, 0.3), (0, 0, 5.9), steel), box("beam2", (8.5, 0.14, 0.14), (0, 0, 5.5), steel)]
+    for i in range(8):
+        o.append(box("truss", (0.08, 0.08, 0.45), (-3.5 + i * 1.0, 0, 5.7), steel))
+    for lane in (-2.2, 0, 2.2):
+        o.append(box("hanger", (0.06, 0.06, 0.3), (lane, 0, 5.72), dark))
+    register(o, "gantry")
+
+
+def wires():
+    """Overhead wires for one 12 m tile (3 lanes)."""
+    dark = mat("wire", "#555e66")
+    o = []
+    for lane in (-2.2, 0, 2.2):
+        o.append(box("wire", (0.025, 12.0, 0.025), (lane, 6.0, 5.6), dark))
+    register(o, "wires")
+
+
+def station_roof():
+    """Big station canopy over all lanes (24 m) with steel columns outside the track."""
+    red = mat("canopy", "#c9302c")
+    white = mat("canopy_white", "#f4f4f4")
+    steel = mat("gantry_steel", "#7d8791")
+    glass = mat("glass", "#8fd3ff", rough=0.2)
+    o = []
+    L = 24.0
+    for y in (2, 12, 22):
+        o.append(cyl("col_l", 0.18, 6.4, (-4.2, y, 3.2), steel, verts=8))
+        o.append(cyl("col_r", 0.18, 6.4, (4.2, y, 3.2), steel, verts=8))
+    for i in range(6):
+        c = red if i % 2 == 0 else white
+        o.append(box("roof", (10.4, 4.0, 0.2), (0, 2 + i * 4, 6.6), c))
+    o.append(box("skylight", (3.0, L - 1, 0.1), (0, L / 2, 6.75), glass))
+    o.append(box("edge_l", (0.3, L, 0.5), (-5.2, L / 2, 6.45), steel))
+    o.append(box("edge_r", (0.3, L, 0.5), (5.2, L / 2, 6.45), steel))
+    register(o, "station_roof")
+
+
+
+# ----------------------------------------------------------------------------
+# Islamabad road theme
+# ----------------------------------------------------------------------------
+def road_tile():
+    """3-lane asphalt road tile (12 m): dashed lane lines, kerbs, greenbelt strips, footpath."""
+    asphalt = mat("asphalt", "#5a5d63")
+    asphalt2 = mat("asphalt2", "#555860")
+    paint = mat("road_paint", "#f2f2e6")
+    yellow = mat("road_yellow", "#f2c230")
+    kerb = mat("kerb", "#d9d3c5")
+    kerb_stripe = mat("kerb_stripe", "#2b2b2b")
+    grass = mat("grass", "#6fa84f")
+    path = mat("footpath", "#c9b8a0")
+    o = []
+    L = 12.0
+    o.append(box("road", (7.2, L, 0.2), (0, L / 2, -0.1), asphalt))
+    # patches for texture variety
+    o.append(box("patch", (2.0, 3.0, 0.005), (1.6, 3.0, 0.002), asphalt2))
+    o.append(box("patch2", (1.4, 4.0, 0.005), (-2.4, 8.5, 0.002), asphalt2))
+    # dashed lane lines between the 3 lanes
+    for x in (-1.1, 1.1):
+        for i in range(4):
+            o.append(box("dash", (0.12, 1.6, 0.01), (x, 1.5 + i * 3.0, 0.005), paint))
+    # solid edge lines
+    for sx in (-1, 1):
+        o.append(box("edge", (0.12, L, 0.01), (sx * 3.45, L / 2, 0.005), yellow))
+        # kerb with black/white stripes
+        o.append(box("kerb", (0.4, L, 0.3), (sx * 3.8, L / 2, 0.05), kerb))
+        for i in range(6):
+            o.append(box("kstripe", (0.41, 1.0, 0.31), (sx * 3.8, 1.0 + i * 2.0, 0.05), kerb_stripe))
+        # greenbelt + footpath
+        o.append(box("grass", (2.0, L, 0.22), (sx * 5.0, L / 2, 0.0), grass))
+        o.append(box("path", (1.2, L, 0.24), (sx * 6.6, L / 2, 0.0), path))
+    register(o, "road_tile")
+
+
+def container(idx):
+    """40 ft shipping container placed along the lane: 12 m long, 2.0 wide, roof at 2.6. Ridable."""
+    cols = [("cont_blue", "#1f4fa3"), ("cont_red", "#c8322b"), ("cont_orange", "#f08a1d"), ("cont_green", "#2a8c4a"), ("cont_maroon", "#7a2a3a"), ("cont_grey", "#7b8794")]
+    cm = mat(*cols[idx % len(cols)])
+    dark = mat("pr_dark", "#2b2b2b")
+    o = []
+    L = COACH_L
+    o.append(box("body", (TRAIN_W, L - 0.1, TRAIN_H - 0.15), (0, L / 2, (TRAIN_H - 0.15) / 2 + 0.05), cm, bevel=0.03))
+    o.append(box("roof", (TRAIN_W - 0.1, L - 0.3, 0.12), (0, L / 2, TRAIN_H - 0.06), cm))
+    # corrugation ribs on both sides and top rails
+    for k in range(11):
+        ry = 0.6 + k * (L - 1.2) / 10
+        for sx in (-1, 1):
+            o.append(box("rib", (0.06, 0.14, TRAIN_H - 0.4), (sx * (TRAIN_W / 2 - 0.01), ry, TRAIN_H / 2), cm))
+    for sx in (-1, 1):
+        o.append(box("rail", (0.08, L, 0.08), (sx * (TRAIN_W / 2 - 0.02), L / 2, TRAIN_H - 0.02), dark))
+        o.append(box("rail_b", (0.08, L, 0.10), (sx * (TRAIN_W / 2 - 0.02), L / 2, 0.1), dark))
+    # doors at the near end with locking bars
+    o.append(box("door", (TRAIN_W - 0.2, 0.05, TRAIN_H - 0.5), (0, 0.02, TRAIN_H / 2), cm))
+    for x in (-0.55, -0.25, 0.25, 0.55):
+        o.append(box("lockbar", (0.06, 0.08, TRAIN_H - 0.7), (x, -0.02, TRAIN_H / 2), dark))
+    o.append(box("handle", (0.5, 0.06, 0.06), (0, -0.05, 1.1), dark))
+    register(o, f"container_{idx}")
+
+
+def container_truck():
+    """Truck cab pulling a container trailer: 12 m total, roof ridable like a container."""
+    cab = mat("truck_cab", "#f5c400")
+    cab_dark = mat("truck_dark", "#2b2b2b")
+    glass = mat("glass", "#8fd3ff", rough=0.2)
+    cm = mat("cont_red", "#c8322b")
+    steel = mat("steel", "#5b6770")
+    o = []
+    L = COACH_L
+    # trailer with a 20ft container (near end) - full height so the roof is continuous
+    o.append(box("chassis", (TRAIN_W, L - 3.2, 0.25), (0, (L - 3.2) / 2, 0.75), steel))
+    o.append(box("cont", (TRAIN_W, L - 3.4, TRAIN_H - 0.9), (0, (L - 3.4) / 2 + 0.05, 0.9 + (TRAIN_H - 0.9) / 2), cm, bevel=0.03))
+    for k in range(7):
+        for sx in (-1, 1):
+            o.append(box("rib", (0.06, 0.14, TRAIN_H - 1.2), (sx * (TRAIN_W / 2 - 0.01), 0.6 + k * 1.2, 1.75), cm))
+    # cab at the far end (truck drives away from the runner)
+    o.append(box("cab", (TRAIN_W, 2.6, 1.6), (0, L - 1.4, 1.5), cab, bevel=0.08))
+    o.append(box("cab_roof", (TRAIN_W - 0.2, 2.4, 0.6), (0, L - 1.4, TRAIN_H - 0.3), cab, bevel=0.08))
+    o.append(box("windshield", (TRAIN_W - 0.4, 0.06, 0.8), (0, L - 0.1, 1.9), glass))
+    o.append(box("grille", (1.4, 0.08, 0.6), (0, L - 0.08, 1.1), cab_dark))
+    for sx in (-1, 1):
+        o.append(box("headlight", (0.3, 0.06, 0.2), (sx * 0.7, L - 0.06, 1.2), mat("headlamp", "#fff2b0", emissive="#fff2b0", emissive_strength=2)))
+    for yy in (1.5, 3.0, L - 1.2):
+        for sx in (-1, 1):
+            o.append(cyl("wheel", 0.5, 0.35, (sx * 0.85, yy, 0.5), cab_dark, rot=(0, 90, 0), verts=14))
+    register(o, "container_truck")
+
+
+def army_jeep():
+    """Olive army jeep, 5 m long, deadly. Origin at the front bumper (the side facing the runner)."""
+    olive = mat("olive", "#5c6b3a")
+    olive_dark = mat("olive_dark", "#3e4a27")
+    dark = mat("pr_dark", "#2b2b2b")
+    glass = mat("jeep_glass", "#9fc8e0", rough=0.2)
+    o = []
+    L = 5.0
+    o.append(box("body", (2.0, L - 0.4, 0.9), (0, L / 2, 0.95), olive, bevel=0.06))
+    o.append(box("hood", (1.9, 1.6, 0.5), (0, 1.0, 1.35), olive, bevel=0.06))
+    o.append(box("cabin", (1.9, 2.4, 0.9), (0, 3.2, 1.85), olive, bevel=0.08))
+    o.append(box("roof", (2.0, 2.6, 0.1), (0, 3.2, 2.35), olive_dark))
+    o.append(box("windshield", (1.7, 0.06, 0.7), (0, 2.0, 1.85), glass))
+    o.append(box("grille", (1.2, 0.08, 0.5), (0, 0.24, 1.0), dark))
+    o.append(box("bumper", (2.1, 0.2, 0.25), (0, 0.15, 0.6), dark))
+    for sx in (-1, 1):
+        o.append(cyl("headlight", 0.15, 0.06, (sx * 0.7, 0.22, 1.15), mat("headlamp", "#fff2b0", emissive="#fff2b0", emissive_strength=2), rot=(90, 0, 0), verts=12))
+        o.append(box("win_side", (0.06, 1.6, 0.6), (sx * 0.96, 3.2, 1.9), glass))
+        for yy in (1.1, 3.9):
+            o.append(cyl("wheel", 0.48, 0.4, (sx * 0.9, yy, 0.48), dark, rot=(0, 90, 0), verts=14))
+    o.append(box("antenna", (0.04, 0.04, 1.6), (-0.8, 4.4, 3.0), dark))
+    o.append(box("spare", (0.35, 0.9, 0.9), (0, L - 0.05, 1.2), dark, bevel=0.1))
+    o.append(box("light_bar", (1.2, 0.3, 0.2), (0, 3.2, 2.5), mat("siren_blue", "#2a6bff", emissive="#2a6bff", emissive_strength=2)))
+    register(o, "army_jeep")
+
+
+def dirt_ramp():
+    """Plank-and-rubble ramp up onto a container roof (6 m)."""
+    wood = mat("ramp_wood", "#a97c50")
+    wood_dark = mat("ramp_wood_dark", "#7a5230")
+    rubble = mat("rubble", "#8f8578")
+    o = []
+    L = RAMP_L if 'RAMP_L' in globals() else 6.0
+    steps = 8
+    for i in range(steps):
+        y0 = i * L / steps
+        h = (i + 1) * TRAIN_H / steps
+        o.append(box("step", (TRAIN_W - 0.1, L / steps + 0.02, h), (0, y0 + L / steps / 2, h / 2), rubble))
+    # planks on top
+    for k in range(2):
+        x = -0.5 + k * 1.0
+        o.append(beam(f"plank_{k}", (x, 0.0, 0.03), (x, L, TRAIN_H + 0.03), 0.7, wood if k else wood_dark, thick2=0.08))
+    register(o, "dirt_ramp")
+
+
+def police_barricade():
+    """Low red/white police barricade with POLICE text - jump over."""
+    red = mat("bar_red", "#e0382b")
+    white = mat("bar_white", "#f7f7f7")
+    dark = mat("pr_dark", "#2b2b2b")
+    blue = mat("police_blue", "#1f3a93")
+    o = []
+    o.append(box("plank", (TRAIN_W, 0.14, 0.36), (0, 0, 0.78), white, bevel=0.02))
+    for i in range(4):
+        o.append(box("stripe", (0.24, 0.16, 0.38), (-0.75 + i * 0.5, 0, 0.78), red))
+    o.append(box("sign", (1.1, 0.06, 0.26), (0, -0.09, 0.78), blue))
+    bpy.ops.object.text_add(location=(0, -0.13, 0.78))
+    t = bpy.context.active_object
+    t.data.body = "POLICE"; t.data.size = 0.22; t.data.extrude = 0.01; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
+    t.rotation_euler = (math.radians(90), 0, 0)
+    bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "txt"; t.data.materials.append(white)
+    o.append(t)
+    o.append(box("plank2", (TRAIN_W, 0.10, 0.12), (0, 0, 0.42), white))
+    for sx in (-1, 1):
+        o.append(box("leg", (0.10, 0.10, 0.95), (sx * 0.92, 0, 0.48), dark))
+        o.append(box("foot", (0.20, 0.50, 0.06), (sx * 0.92, 0, 0.03), dark))
+    o.append(box("light", (0.18, 0.18, 0.12), (0, 0, 1.03), mat("amber", "#ffb300", emissive="#ffb300", emissive_strength=2.0)))
+    register(o, "police_barricade")
+
+
+def road_closed_gantry():
+    """Overhead ROAD CLOSED sign - duck under."""
+    grey = mat("gantry", "#6b7280")
+    red = mat("bar_red", "#e0382b")
+    white = mat("bar_white", "#f7f7f7")
+    o = []
+    for sx in (-1, 1):
+        o.append(box("post", (0.12, 0.12, 2.8), (sx * 1.0, 0, 1.4), grey))
+    o.append(box("beam", (TRAIN_W + 0.3, 0.14, 0.14), (0, 0, 2.75), grey))
+    o.append(box("board", (TRAIN_W, 0.10, 1.0), (0, 0, 2.15), red, bevel=0.02))
+    o.append(box("frame", (TRAIN_W + 0.06, 0.06, 1.06), (0, 0.04, 2.15), white))
+    bpy.ops.object.text_add(location=(0, -0.07, 2.15))
+    t = bpy.context.active_object
+    t.data.body = "ROAD\nCLOSED"; t.data.size = 0.34; t.data.extrude = 0.01; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
+    t.rotation_euler = (math.radians(90), 0, 0)
+    bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "txt"; t.data.materials.append(white)
+    o.append(t)
+    register(o, "road_closed_gantry")
+
+
+def cones():
+    """Row of three traffic cones across a lane - stumble."""
+    orange = mat("cone_orange", "#ff6a1a")
+    white = mat("bar_white", "#f7f7f7")
+    dark = mat("pr_dark", "#2b2b2b")
+    o = []
+    for x in (-0.6, 0.0, 0.6):
+        o.append(box("base", (0.4, 0.4, 0.06), (x, 0, 0.03), dark))
+        o.append(cone("cone", 0.18, 0.05, 0.75, (x, 0, 0.42), orange, verts=12))
+        o.append(cyl("band", 0.14, 0.08, (x, 0, 0.45), white, verts=12))
+        o.append(cyl("band2", 0.10, 0.06, (x, 0, 0.62), white, verts=12))
+    register(o, "cones")
+
+
+def teargas():
+    """Tear-gas canister spewing a yellow-green cloud at head height - duck under it."""
+    steel = mat("gas_can", "#a7adb4", rough=0.4, metal=0.5)
+    dark = mat("pr_dark", "#2b2b2b")
+    gas1 = mat("gas1", "#d8e04a", alpha=0.85)
+    gas2 = mat("gas2", "#c2cc3a", alpha=0.85)
+    o = []
+    o.append(cyl("can", 0.14, 0.5, (0.2, 0, 1.55), steel, rot=(0, 70, 0), verts=12))
+    o.append(cyl("cap", 0.08, 0.1, (0.46, 0, 1.63), dark, rot=(0, 70, 0), verts=10))
+    import random
+    random.seed(5)
+    for i in range(9):
+        r = random.uniform(0.35, 0.7)
+        o.append(sphere("gas", r, (random.uniform(-0.9, 0.9), random.uniform(-0.4, 0.4), 1.85 + random.uniform(-0.2, 0.5)), gas1 if i % 2 else gas2, seg=10, rings=6))
+    register(o, "teargas")
+
+
+def tyre_stack():
+    """Burning-tyre style pile (no fire) - stumble obstacle."""
+    tyre = mat("tyre", "#1e1e1e")
+    o = []
+    for i, (x, y) in enumerate(((-0.45, 0.1), (0.4, -0.1), (0.0, 0.3), (-0.1, -0.35))):
+        o.append(torus("tyre", 0.32, 0.14, (x, y, 0.15), tyre, seg=16, ring=8))
+    o.append(torus("tyre_top", 0.32, 0.14, (0.0, 0.0, 0.45), tyre, rot=(20, 0, 0), seg=16, ring=8))
+    register(o, "tyre_stack")
+
+
+def police_van():
+    """Parked white police van with blue stripe - side decoration."""
+    white = mat("van_white", "#f2f2f2")
+    blue = mat("police_blue", "#1f3a93")
+    dark = mat("pr_dark", "#2b2b2b")
+    glass = mat("glass", "#8fd3ff", rough=0.2)
+    o = [box("body", (2.0, 5.0, 1.4), (0, 2.5, 1.0), white, bevel=0.08), box("cab", (1.9, 1.4, 0.9), (0, 4.9, 0.95), white, bevel=0.08),
+         box("stripe", (2.02, 5.0, 0.25), (0, 2.5, 1.0), blue), box("windshield", (1.7, 0.06, 0.6), (0, 5.6, 1.15), glass),
+         box("lights", (1.0, 0.4, 0.2), (0, 2.5, 1.8), mat("siren_red", "#ff2a2a", emissive="#ff2a2a", emissive_strength=2))]
+    for yy in (1.0, 4.5):
+        for sx in (-1, 1):
+            o.append(cyl("wheel", 0.4, 0.3, (sx * 0.9, yy, 0.4), dark, rot=(0, 90, 0), verts=14))
+    register(o, "police_van")
+
+
+def flag_pole():
+    green = mat("flag_green", "#0f7a3d")
+    white = mat("flag_white", "#ffffff")
+    steel = mat("gantry", "#6b7280")
+    o = [cyl("pole", 0.06, 7.0, (0, 0, 3.5), steel, verts=8), box("flag", (0.06, 2.2, 1.4), (0, 1.1, 6.2), green), box("flag_white", (0.07, 0.55, 1.4), (0, 0.27, 6.2), white),
+         sphere("moon", 0.35, (0, 1.3, 6.2), white, seg=12, rings=8, scale=(0.1, 1, 1))]
+    register(o, "flag_pole")
+
+
 if __name__ == "__main__":
     reset()
     for fn in (train_passenger, train_metro, train_freight, train_ramp,
                barrier_low, barrier_high, barrier_mid, barrier_wall, bush, light_pole,
                tunnel, pillar, overpass, station_platform, ground_tile, wall_segment, container_stack,
-               lamp_post, dhaba, bench, rickshaw):
+               lamp_post, dhaba, bench, rickshaw, gantry, wires, station_roof,
+               road_tile, container_truck, army_jeep, dirt_ramp, police_barricade, road_closed_gantry, cones, teargas, tyre_stack, police_van, flag_pole):
         fn()
     for i in range(4):
         wall_graffiti(i)
+    for i in range(6):
+        container(i)
     export("props.glb", PROPS, bake=True)

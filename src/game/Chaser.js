@@ -1,16 +1,23 @@
 import * as THREE from 'three';
 import { CHASER } from './constants.js';
 
-/** The traffic warden and his dog who chase the runner. */
+/** Two rangers on foot chasing the biker. */
 export class Chaser {
   constructor(assets, scene) {
-    this.guard = assets.character('guard');
-    this.dog = assets.character('dog');
+    this.a = assets.character('ranger');
+    this.b = assets.character('ranger');
+    // second ranger: darker uniform so they read as two people
+    this.b.root.traverse((o) => {
+      if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = mats.map((m) => { if (m.name === 'khaki' || m.name === 'skin') { const c = m.clone(); c.color.set(m.name === 'khaki' ? '#9c8a5a' : '#8a5a3a'); return c; } return m; });
+      if (o.material.length === 1) o.material = o.material[0];
+    });
     this.group = new THREE.Group();
-    this.group.add(this.guard.root);
-    this.group.add(this.dog.root);
-    this.dog.root.position.set(1.1, 0, 0.6);
-    this.dog.root.scale.setScalar(1.1);
+    this.group.add(this.a.root);
+    this.group.add(this.b.root);
+    this.b.root.position.set(1.25, 0, 0.9);
+    this.b.root.scale.setScalar(0.96);
     scene.add(this.group);
     this.dist = CHASER.startDist;
     this.targetDist = CHASER.farDist;
@@ -21,7 +28,7 @@ export class Chaser {
   }
 
   _play(name) {
-    for (const c of [this.guard, this.dog]) {
+    for (const c of [this.a, this.b]) {
       const a = c.actions[name] || c.actions.Run;
       if (c.current === a) continue;
       if (c.current) c.current.fadeOut(0.15);
@@ -29,21 +36,20 @@ export class Chaser {
       a.setLoop(THREE.LoopRepeat, Infinity);
       c.current = a;
     }
+    this.b.current.time = 0.25;   // offset the strides
   }
 
   reset() {
     this.dist = CHASER.startDist;
     this.targetDist = CHASER.farDist;
     this.nearTimer = 0;
-    this.visible = true;
     this.group.visible = true;
     this._play('Idle');
   }
 
-  /** Called on start: show chaser right behind the player, then let him fall back. */
   startRun() { this.dist = CHASER.startDist; this.targetDist = CHASER.farDist; this.nearTimer = 1.5; this._play('Run'); }
 
-  /** Player stumbled – chaser closes in for a while. Returns true if he was already close (=> caught). */
+  /** Player stumbled – rangers close in. Returns true if they were already close (=> arrested). */
   stumble() {
     const wasNear = this.nearTimer > 0 && this.dist < CHASER.nearDist + 1.5;
     this.nearTimer = CHASER.nearTime;
@@ -54,7 +60,7 @@ export class Chaser {
 
   get isNear() { return this.nearTimer > 0; }
 
-  catchPlayer() { this.targetDist = 2.1; this.dist = Math.min(this.dist, 4.5); this._play('Run'); }
+  catchPlayer() { this.targetDist = 2.4; this.dist = Math.min(this.dist, 5); this._play('Run'); }
 
   update(dt, player, speed, running) {
     if (running) {
@@ -63,18 +69,17 @@ export class Chaser {
       this.dist += (this.targetDist - this.dist) * Math.min(1, dt * k);
     } else if (player.dead) {
       this.dist += (this.targetDist - this.dist) * Math.min(1, dt * 3);
-      if (this.dist < 2.2) this._play('Idle');
+      if (this.dist < 2.7) this._play('Idle');
     }
-    // follow lanes with a small delay
     this.x += (player.x - this.x) * Math.min(1, dt * 6);
     const targetY = player.flying ? 0 : player.groundY;
     this.y += (targetY - this.y) * Math.min(1, dt * 8);
     this.group.position.set(this.x, this.y, player.z + this.dist);
-    this.guard.mixer.update(dt);
-    this.dog.mixer.update(dt);
-    if (this.guard.current) this.guard.current.timeScale = running ? 0.8 + speed / 24 : 1;
-    if (this.dog.current) this.dog.current.timeScale = running ? 0.9 + speed / 22 : 1;
-    // hide when far behind the camera
-    this.group.visible = this.dist < 13.5;
+    this.a.mixer.update(dt);
+    this.b.mixer.update(dt);
+    const ts = running ? 0.9 + speed / 22 : 1;
+    if (this.a.current) this.a.current.timeScale = ts;
+    if (this.b.current) this.b.current.timeScale = ts * 1.05;
+    this.group.visible = this.dist < 14.5;
   }
 }

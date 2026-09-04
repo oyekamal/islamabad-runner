@@ -161,8 +161,56 @@ def headstart_rocket():
     register(o, "headstart")
 
 
+
+def msg_bubble():
+    """Green chat bubble with signal bars (charges Turbo)."""
+    green = mat("msg_green", "#25a244")
+    green_dark = mat("msg_green_dark", "#1b7d33")
+    white = mat("msg_white", "#ffffff", emissive="#ffffff", emissive_strength=0.4)
+    o = [box("tile", (0.9, 0.16, 0.9), (0, 0, 0), green, bevel=0.14),
+         torus("ring", 0.28, 0.06, (0, -0.06, 0.05), white, rot=(90, 0, 0), seg=20, ring=8),
+         box("tail", (0.16, 0.06, 0.16), (-0.24, -0.06, -0.24), white, rot=(0, 45, 0)),
+         box("bar1", (0.08, 0.06, 0.16), (-0.12, -0.08, -0.02), white),
+         box("bar2", (0.08, 0.06, 0.26), (0.0, -0.08, 0.03), white),
+         box("bar3", (0.08, 0.06, 0.38), (0.12, -0.08, 0.09), white)]
+    register(o, "msg_bubble")
+
+
+def biryani():
+    """Biryani box (the mystery box): brown card box, lid ajar, rice + a chicken piece."""
+    card = mat("card", "#b6752f")
+    card_dark = mat("card_dark", "#8a5522")
+    rice = mat("rice", "#f4e0a8")
+    rice2 = mat("rice2", "#e6a93b")
+    chicken = mat("chicken", "#a3552b")
+    white = mat("msg_white", "#ffffff", emissive="#ffffff", emissive_strength=0.4)
+    o = [box("box", (0.9, 0.7, 0.45), (0, 0, -0.1), card, bevel=0.03),
+         box("lid", (0.92, 0.72, 0.06), (0, -0.05, 0.28), card_dark, rot=(-28, 0, 0)),
+         box("rice", (0.8, 0.6, 0.12), (0, 0, 0.16), rice),
+         sphere("chicken", 0.16, (0.15, 0.05, 0.25), chicken, seg=10, rings=6, scale=(1.2, 0.9, 0.7))]
+    import random
+    random.seed(9)
+    for i in range(8):
+        o.append(box("grain", (0.05, 0.05, 0.04), (random.uniform(-0.35, 0.35), random.uniform(-0.25, 0.25), 0.23), rice2))
+    bpy.ops.object.text_add(location=(0, 0.36, -0.1))
+    t = bpy.context.active_object
+    t.data.body = "?"; t.data.size = 0.36; t.data.extrude = 0.02; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
+    t.rotation_euler = (math.radians(90), 0, math.radians(180))
+    bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "q"; t.data.materials.append(white)
+    o.append(t)
+    register(o, "biryani")
+
+
+def turbo_flame():
+    """Nitro flame attached behind the bike while Turbo is active."""
+    f1 = mat("flame_o", "#ff7a1a", emissive="#ff6a00", emissive_strength=3)
+    f2 = mat("flame_y", "#ffd53d", emissive="#ffd53d", emissive_strength=3)
+    o = [cone("f1", 0.22, 0.0, 0.9, (0, 0, 0), f1, rot=(90, 0, 0), verts=10),
+         cone("f2", 0.12, 0.0, 0.6, (0, 0.1, 0), f2, rot=(90, 0, 0), verts=10)]
+    register(o, "turbo_flame")
+
 if __name__ == "__main__":
     reset()
-    for fn in (coin, jetpack, sneakers, magnet, multiplier, mystery_box, key, hoverboard, headstart_rocket):
+    for fn in (coin, jetpack, sneakers, magnet, multiplier, mystery_box, key, hoverboard, headstart_rocket, msg_bubble, biryani, turbo_flame):
         fn()
     export("pickups.glb", PROPS, bake=True)

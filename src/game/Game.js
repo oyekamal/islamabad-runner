@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import { LANE_W, SPEED, SCORE_PER_METRE, POWERUP_BASE_DURATION, POWERUP_UPGRADE_STEP, HOVERBOARD_TIME, REVIVE_KEYS, COLORS, TRAIN_H } from './constants.js';
+import { LANE_W, SPEED, SCORE_PER_METRE, POWERUP_BASE_DURATION, POWERUP_UPGRADE_STEP, HOVERBOARD_TIME, BUBBLES_PER_TURBO, REVIVE_KEYS, COLORS, TRAIN_H, ZONE_LENGTH } from './constants.js';
 import { Player } from './Player.js';
 import { Chaser } from './Chaser.js';
-import { Track } from './Track.js';
+import { Track, zoneAt } from './Track.js';
 import { Effects } from './Effects.js';
 import { Input } from './Input.js';
 import { Audio } from './Audio.js';
 import { Save } from './Save.js';
-import { CHARACTERS, BOARDS } from '../data/characters.js';
+import { CHARACTERS, BIKES } from '../data/characters.js';
 import { MISSION_SETS, MAX_MULTIPLIER, DAILY_WORDS, DAILY_REWARDS } from '../data/missions.js';
 
-const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a, multiplier: 0x3d8bff, mystery_box: 0xb36bff, key: 0xffd53d, letter: 0xffffff };
+const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a, multiplier: 0x3d8bff, biryani: 0xffb347, key: 0xffd53d, letter: 0xffffff, msg_bubble: 0x25a244 };
 
 export class Game {
   constructor(canvas, assets) {
@@ -38,7 +38,7 @@ export class Game {
     this._buildSky();
     this._buildLights();
 
-    this.player = new Player(assets, this.scene, this.characterDef());
+    this.player = new Player(assets, this.scene, this.characterDef(), this.bikeDef());
     this.chaser = new Chaser(assets, this.scene);
     this.track = new Track(assets, this.scene, this);
     this.fx = new Effects(this.scene);
@@ -152,7 +152,7 @@ export class Game {
 
   // ------------------------------------------------------------------ helpers
   characterDef() { return CHARACTERS.find((c) => c.id === this.save.data.character) || CHARACTERS[0]; }
-  boardDef() { return BOARDS.find((b) => b.id === this.save.data.board) || BOARDS[0]; }
+  bikeDef() { return BIKES.find((b) => b.id === this.save.data.board) || BIKES[0]; }
 
   _dailyWord() {
     const d = new Date();
@@ -197,24 +197,27 @@ export class Game {
     this.speed = SPEED.start;
     this.baseMultiplier = Math.min(MAX_MULTIPLIER, 1 + s.missionSet);
     this.player.reset();
-    this.player.setCharacter(this.characterDef());
-    this._applyBoardLook();
+    this.player.setCharacter(this.characterDef(), this.bikeDef());
     this.chaser.reset();
     this.chaser.startRun();
-    this.track.reset();
+    this.track.reset(opts.startDistance || 0);
+    this.distance = opts.startDistance || 0;
     this.powerups = {};
     this.hoverTimer = 0;
     this.invuln = 0;
     this.reviveCount = 0;
     this.slowmo = 1;
+    this.bubbleCharge = 0;
     this.run = {
       score: 0, coins: 0, jumps: 0, rolls: 0, powerups: 0, sneakers: 0, magnets: 0, jetpacks: 0, multipliers: 0, boxes: 0, keys: 0,
       barriersDodged: 0, stumbles: 0, hoverboards: 0, hoverNoCrash: 0, trainBumps: 0, trainJumps: 0, trainStreak: 0, letters: 0,
       signals: 0, bushes: 0, centerRolls: 0, sameLane: 0, sameLaneCur: 0, magnetCoins: 0, boosterBonus: 0, headstarts: 0,
       noCoinScore: 0, noJumpScore: 0, noRollScore: 0, noPowerupScore: 0, allPowerups: 0, kinds: new Set(), earlyCaught: 0,
-      hoverCrashed: false, time: 0, tokens: 0, dodgedIds: new Set(),
+      hoverCrashed: false, time: 0, tokens: 0, dodgedIds: new Set(), bubbles: 0, laps: 0,
     };
-    this.player.play('Run');
+    this.zoneId = null;
+    this.lastLap = 0;
+    this.player.play('Ride');
     this.state = 'running';
     this.emit('runStart');
     if (opts.headstart && s.headstarts > 0) {
@@ -226,22 +229,6 @@ export class Game {
       this.emit('toast', `Score Booster +${this.run.boosterBonus}`);
     }
     this.save.write();
-  }
-
-  _applyBoardLook() {
-    const b = this.boardDef();
-    this.player.board.traverse((o) => {
-      if (!o.isMesh) return;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      o.material = mats.map((m) => {
-        const c = m.clone();
-        if (m.name === 'hb_deck') c.color.set(b.deck);
-        if (m.name === 'hb_stripe') c.color.set(b.stripe);
-        if (m.name === 'hb_glow') { c.color.set(b.glow); c.emissive.set(b.glow); }
-        return c;
-      });
-      if (o.material.length === 1) o.material = o.material[0];
-    });
   }
 
   _activateHeadstart() {
@@ -288,7 +275,7 @@ export class Game {
     // clear the immediate neighbourhood and lift the player
     this.player.dead = false;
     this.player.rolling = 0; this.player.stumbling = 0;
-    this.player.play('Run', 0);
+    this.player.play('Ride', 0);
     this.player.setFlying(true, 5.5);
     this.headstart = 2.4;
     this.invuln = 3.2;
@@ -319,7 +306,7 @@ export class Game {
     this.state = 'menu';
     this.audio.stopMusic();
     this.player.reset();
-    this.player.setCharacter(this.characterDef());
+    this.player.setCharacter(this.characterDef(), this.bikeDef());
     this.chaser.reset();
     this.track.reset();
     this.distance = 0;
@@ -352,7 +339,7 @@ export class Game {
 
   useHoverboard() {
     if (this.state !== 'running' || this.player.hover || this.player.flying) return false;
-    if (this.save.data.hoverboards <= 0) { this.emit('toast', 'No hoverboards! Buy some in the shop.'); return false; }
+    if (this.save.data.hoverboards <= 0) { this.emit('toast', `No Turbo! Collect ${BUBBLES_PER_TURBO} signal bubbles or buy one in the shop.`); return false; }
     this.save.data.hoverboards--;
     this.save.write();
     this.hoverTimer = HOVERBOARD_TIME;
@@ -389,7 +376,15 @@ export class Game {
       else this.audio.powerup();
       if (kind === 'sneakers') p.superJump = true;
       this.emit('powerup', { kind, duration: dur });
-    } else if (kind === 'mystery_box') {
+    } else if (kind === 'msg_bubble') {
+      this.run.bubbles++; this.save.addStat('bubbles');
+      this.bubbleCharge = (this.bubbleCharge || 0) + 1;
+      this.audio.letter();
+      if (this.bubbleCharge >= BUBBLES_PER_TURBO) {
+        this.bubbleCharge = 0; s.hoverboards++; this.emit('toast', 'SIGNAL FULL — +1 TURBO!');
+      } else this.emit('toast', `SIGNAL ${this.bubbleCharge}/${BUBBLES_PER_TURBO}`);
+      this.emit('bubbles', this.bubbleCharge);
+    } else if (kind === 'biryani') {
       this.run.boxes++; this.save.addStat('boxes');
       const reward = this.openMysteryBox();
       this.audio.powerup();
@@ -513,7 +508,7 @@ export class Game {
     const targetSpeed = Math.min(SPEED.max, SPEED.start + this.distance * SPEED.perMetre);
     let speed = targetSpeed;
     if (this.headstart > 0) { speed = SPEED.headstart; this.headstart -= dt; if (this.headstart <= 0 && !(this.powerups.jetpack > 0)) p.setFlying(false); }
-    if (this.boardDef().bonus === 'speed' && p.hover) speed *= 1.1;
+    if (this.bikeDef().bonus === 'speed' && p.hover) speed *= 1.1;
     this.speed = speed;
     this.audio.intensity = Math.min(1, this.distance / 2000);
 
@@ -522,6 +517,18 @@ export class Game {
     p.z -= dz;
     this.distance += dz;
     r.score += dz * SCORE_PER_METRE * this.multiplier;
+
+    // zones & the D-Chowk milestone every 3000 m
+    const zone = zoneAt(this.distance);
+    if (zone.id !== this.zoneId) { this.zoneId = zone.id; this.emit('zone', zone); }
+    const lap = Math.floor(this.distance / ZONE_LENGTH);
+    if (lap > this.lastLap) {
+      this.lastLap = lap; r.laps = lap; this.save.addStat('dchowk');
+      const bonus = 250 * lap;
+      r.coins += bonus;
+      this.audio.mission();
+      this.emit('milestone', { lap, bonus });
+    }
 
     // same lane tracking
     r.sameLaneCur += dt; r.sameLane = Math.max(r.sameLane, r.sameLaneCur);
@@ -560,8 +567,8 @@ export class Game {
     // fell off a train? nothing special. Jetpack flame
     if (this.powerups.jetpack > 0 && p.flying) this.track.airCoins(p.z, p.flyAltitude);
     if (p.flying) { this.fx.jet(p.x - 0.22, p.y + 0.7, p.z + 0.4); this.fx.jet(p.x + 0.22, p.y + 0.7, p.z + 0.4); }
-    if (p.hover && p.grounded && Math.random() < 0.5) this.fx.hoverTrail(p.x, p.y + 0.05, p.z + 0.6);
-    if (p.grounded && !p.hover && !p.flying && Math.random() < dt * 8) this.fx.dust(p.x, p.y, p.z + 0.4, 1);
+        if (p.grounded && !p.flying && Math.random() < dt * 10) this.fx.dust(p.x, p.y, p.z + 1.0, 1);
+    if (p.hover && p.grounded) this.fx.hoverTrail(p.x + 0.2, p.y + 0.6, p.z + 1.4);
 
     // coins
     const magnet = this.powerups.magnet > 0;
@@ -576,14 +583,14 @@ export class Game {
     }
 
     // collisions
-    const lowrider = this.boardDef().bonus === 'lowrider' && p.hover;
+    const lowrider = this.bikeDef().bonus === 'lowrider' && p.hover;
     const events = this.track.collide(p, prevZ, this.invuln > 0 || p.flying);
     for (const e of events) {
       if (e.type === 'pickup') { this._pickup(e.kind, e.letter); continue; }
       if (e.type === 'stumble') {
-        if (p.hover) continue;   // hoverboards plough through bushes & signals
+        if (p.hover) continue;   // turbo ploughs through cones, tyres and rangers
         r.stumbles++; this.save.addStat('stumbles');
-        if (e.obstacle.type === 'bush') { r.bushes++; this.save.addStat('bushes'); } else { r.signals++; this.save.addStat('signals'); }
+        if (e.obstacle.type === 'tyre_stack') { r.bushes++; this.save.addStat('bushes'); } else if (e.obstacle.type === 'ranger') { r.rangers = (r.rangers || 0) + 1; this.save.addStat('rangers'); } else { r.signals++; this.save.addStat('signals'); }
         this.audio.stumble();
         this.camShake = 0.25;
         const caught = this.chaser.stumble();
@@ -605,7 +612,7 @@ export class Game {
         continue;
       }
       if (e.type === 'death') {
-        if (lowrider && e.obstacle.kind === 'barrier' && e.obstacle.type !== 'barrier_low') continue;
+        if (lowrider && e.obstacle.kind === 'barrier' && e.obstacle.type !== 'police_barricade') continue;
         if (p.hover) {
           // board saves you once
           this.fx.boardBreak(p.x, p.y + 0.3, p.z);
@@ -614,7 +621,7 @@ export class Game {
           this._endHoverboard(true);
           this.invuln = 1.6;
           this.camShake = 0.4;
-          this.emit('toast', 'Hoverboard saved you!');
+          this.emit('toast', 'TURBO saved you!');
           continue;
         }
         if (e.obstacle.kind === 'train') { r.trainBumps++; this.save.addStat('trainBumps'); }
@@ -645,7 +652,7 @@ export class Game {
     this._missionTick = (this._missionTick || 0) + dt;
     if (this._missionTick > 0.5) { this._missionTick = 0; this._checkMissions(); }
 
-    this.emit('hud', { score: Math.floor(r.score), coins: r.coins, multiplier: this.multiplier, powerups: this.powerups, hover: this.hoverTimer, speed, distance: this.distance });
+    this.emit('hud', { score: Math.floor(r.score), coins: r.coins, multiplier: this.multiplier, powerups: this.powerups, hover: this.hoverTimer, speed, distance: this.distance, bubbles: this.bubbleCharge || 0 });
   }
 
   _updateCamera(dt) {

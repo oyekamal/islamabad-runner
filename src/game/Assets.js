@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
-const FILES = ['runner', 'guard', 'dog', 'props', 'pickups', 'scenery'];
+const FILES = ['biker', 'ranger', 'props', 'pickups', 'scenery'];
 
 /** Convert every PBR material into a cheap, bright Lambert material (mobile friendly, flat cartoon look). */
 function simplifyMaterials(root) {

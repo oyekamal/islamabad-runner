@@ -323,3 +323,47 @@ def push_action_to_nla(arm, act):
     strip = track.strips.new(act.name, int(act.frame_range[0]), act)
     strip.name = act.name
     arm.animation_data.action = None
+
+
+def beam(name, p1, p2, thick, material, thick2=None, bevel=0.0):
+    """Box aligned along the segment p1->p2 (its local Z axis follows the segment)."""
+    p1 = Vector(p1); p2 = Vector(p2)
+    d = p2 - p1
+    L = d.length
+    mid = (p1 + p2) / 2
+    bpy.ops.mesh.primitive_cube_add(size=1, location=mid)
+    o = bpy.context.active_object
+    o.scale = Vector((thick, thick2 or thick, L))
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    if bevel > 0:
+        mod = o.modifiers.new("Bevel", 'BEVEL'); mod.width = bevel; mod.segments = 2; mod.limit_method = 'ANGLE'
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    q = Vector((0, 0, 1)).rotation_difference(d.normalized())
+    o.data.transform(q.to_matrix().to_4x4())
+    return _finish(o, name, material)
+
+
+def bake_pose_to_static(arm, mesh_obj, frame, name):
+    """Duplicate the skinned mesh with the armature evaluated at `frame` -> plain static mesh."""
+    bpy.context.scene.frame_set(frame)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    eval_obj = mesh_obj.evaluated_get(depsgraph)
+    new_mesh = bpy.data.meshes.new_from_object(eval_obj)
+    new_obj = bpy.data.objects.new(name, new_mesh)
+    bpy.context.collection.objects.link(new_obj)
+    for m in mesh_obj.data.materials:
+        if m.name not in [mm.name for mm in new_mesh.materials]:
+            pass
+    return new_obj
+
+
+def action_fcurves(act):
+    """All fcurves of an action (works with Blender 4.4+ layered actions and older flat ones)."""
+    if hasattr(act, "fcurves"):
+        return list(act.fcurves)
+    out = []
+    for layer in act.layers:
+        for strip in layer.strips:
+            for cb in strip.channelbags:
+                out.extend(cb.fcurves)
+    return out

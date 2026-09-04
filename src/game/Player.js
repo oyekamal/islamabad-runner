@@ -1,48 +1,54 @@
 import * as THREE from 'three';
-import { LANE_W, PLAYER, TRAIN_H } from './constants.js';
+import { LANE_W, PLAYER } from './constants.js';
+
+/** The biker. Animation names: Ride, Idle, Jump, Duck, Turbo, Fly, Stumble, Dead. */
+const ONE_SHOT = ['Jump', 'Duck', 'Stumble', 'Dead'];
 
 export class Player {
-  constructor(assets, scene, characterDef) {
+  constructor(assets, scene, characterDef, bikeDef) {
     this.assets = assets;
     this.scene = scene;
     this.group = new THREE.Group();
     scene.add(this.group);
 
     this.char = null;
-    this.setCharacter(characterDef);
+    this.setCharacter(characterDef, bikeDef);
 
-    // blob shadow
-    const shadowGeo = new THREE.CircleGeometry(0.55, 20);
+    // blob shadow (long, like a bike)
+    const shadowGeo = new THREE.CircleGeometry(0.6, 20);
     const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
     this.shadow = new THREE.Mesh(shadowGeo, shadowMat);
     this.shadow.rotation.x = -Math.PI / 2;
+    this.shadow.scale.set(1, 1.7, 1);
     scene.add(this.shadow);
 
-    // hoverboard + jetpack attachments
-    this.board = assets.prop('hoverboard');
-    this.board.visible = false;
-    this.group.add(this.board);
+    // turbo flame (hoverboard equivalent) + jetpack
+    this.flame = assets.prop('turbo_flame');
+    this.flame.visible = false;
+    this.flame.position.set(0.2, 0.62, 1.05);
+    this.group.add(this.flame);
     this.jetpackMesh = assets.prop('jetpack');
     this.jetpackMesh.visible = false;
     this.jetpackMesh.scale.setScalar(0.8);
-    this.jetpackMesh.position.set(0, 1.25, 0.42);
+    this.jetpackMesh.position.set(0, 1.35, 0.45);
     this.jetpackMesh.rotation.y = Math.PI;
     this.group.add(this.jetpackMesh);
 
     this.reset();
   }
 
-  setCharacter(def) {
+  setCharacter(def, bikeDef) {
     if (this.char) this.group.remove(this.char.root);
-    this.char = this.assets.character('runner');
+    this.char = this.assets.character('biker');
     this.group.add(this.char.root);
     this.def = def;
-    if (def && def.palette) this.applyPalette(def.palette);
+    const palette = { ...(def && def.palette ? def.palette : {}), ...(bikeDef && bikeDef.palette ? bikeDef.palette : {}) };
+    this.applyPalette(palette);
     this.current = null;
     this.play('Idle');
   }
 
-  /** Recolour named materials on this clone so characters look different. */
+  /** Recolour named materials on this clone so riders / bikes look different. */
   applyPalette(palette) {
     this.char.root.traverse((o) => {
       if (!o.isMesh) return;
@@ -62,26 +68,22 @@ export class Player {
   reset() {
     this.lane = 0;
     this.targetLane = 0;
-    this.x = 0;
-    this.y = 0;
-    this.z = 0;
-    this.vy = 0;
+    this.x = 0; this.y = 0; this.z = 0; this.vy = 0;
     this.groundY = 0;
     this.grounded = true;
-    this.onTrain = false;
     this.rolling = 0;
     this.jumping = false;
     this.stumbling = 0;
     this.dead = false;
     this.flying = false;        // jetpack
-    this.hover = false;         // hoverboard
-    this.superJump = false;     // sneakers
-    this.laneT = 1;             // lane lerp progress
+    this.hover = false;         // turbo
+    this.superJump = false;     // nitro springs
+    this.laneT = 1;
     this.laneFrom = 0;
     this.fastFall = false;
     this.height = PLAYER.height;
     this.tilt = 0;
-    this.board.visible = false;
+    this.flame.visible = false;
     this.jetpackMesh.visible = false;
     this.group.position.set(0, 0, 0);
     this.group.rotation.set(0, 0, 0);
@@ -96,13 +98,15 @@ export class Player {
     next.reset();
     next.enabled = true;
     next.timeScale = timeScale;
-    const loopOnce = ['Jump', 'Roll', 'Stumble', 'Dead'].includes(name);
-    next.setLoop(loopOnce ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.setLoop(ONE_SHOT.includes(name) ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = true;
     if (prev) { prev.crossFadeTo(next, fade, false); next.play(); }
     else next.play();
     this.current = name;
   }
+
+  /** Base locomotion clip for the current state. */
+  moveClip() { return this.hover ? 'Turbo' : 'Ride'; }
 
   // -------------------------------------------------------------- actions
   moveLane(dir) {
@@ -127,11 +131,12 @@ export class Player {
     return true;
   }
 
+  /** "Roll" in Subway Surfers terms: the biker ducks flat onto the tank. */
   roll() {
     if (this.dead || this.flying) return false;
     if (!this.grounded) { this.fastFall = true; }
     this.rolling = PLAYER.rollTime;
-    this.play('Roll', 0.05, 1.0);
+    this.play('Duck', 0.05, 1.0);
     return true;
   }
 
@@ -140,7 +145,6 @@ export class Player {
     this.play('Stumble', 0.05);
   }
 
-  /** Bounce back to the lane we came from (side-swiped a train). */
   bounceBack() {
     const from = Math.round(this.laneFrom);
     this.targetLane = from;
@@ -151,13 +155,15 @@ export class Player {
   die() {
     this.dead = true;
     this.rolling = 0;
+    this.flame.visible = false;
     this.play('Dead', 0.05);
   }
 
   setHover(on) {
     this.hover = on;
-    this.board.visible = on;
-    if (on && this.grounded) this.play('Hover', 0.15);
+    this.flame.visible = on;
+    if (on && this.grounded) this.play('Turbo', 0.15);
+    else if (!on && this.grounded && !this.dead) this.play('Ride', 0.15);
   }
 
   setFlying(on, altitude = 7.5) {
@@ -171,7 +177,6 @@ export class Player {
   update(dt, speed, running) {
     if (!running) { this.char.mixer.update(dt); this._sync(); return; }
 
-    // lane movement
     if (this.laneT < 1) {
       this.laneT = Math.min(1, this.laneT + dt / PLAYER.laneChangeTime);
       const e = this.laneT < 0.5 ? 2 * this.laneT * this.laneT : 1 - Math.pow(-2 * this.laneT + 2, 2) / 2;
@@ -182,10 +187,8 @@ export class Player {
       this.lane = this.targetLane;
     }
 
-    // vertical
     if (this.flying) {
-      const target = this.flyAltitude;
-      this.y += (target - this.y) * Math.min(1, dt * 4);
+      this.y += (this.flyAltitude - this.y) * Math.min(1, dt * 4);
       this.vy = 0;
     } else if (!this.dead) {
       const g = this.fastFall ? PLAYER.fastFallGravity : PLAYER.gravity;
@@ -198,38 +201,34 @@ export class Player {
           this.grounded = true;
           this.jumping = false;
           this.fastFall = false;
-          if (this.rolling <= 0) this.play(this.hover ? 'Hover' : 'Run', 0.08);
+          if (this.rolling <= 0) this.play(this.moveClip(), 0.08);
         }
+      } else if (this.y > this.groundY + 0.05) {
+        this.grounded = false;
+        this.vy = 0;
       } else {
-        // walked off an edge?
-        if (this.y > this.groundY + 0.05) {
-          this.grounded = false;
-          this.vy = 0;
-        } else {
-          this.y = this.groundY;
-        }
+        this.y = this.groundY;
       }
     }
 
     if (this.rolling > 0) {
       this.rolling -= dt;
-      if (this.rolling <= 0 && !this.dead) {
-        this.play(this.grounded ? (this.hover ? 'Hover' : 'Run') : 'Jump', 0.1);
-      }
+      if (this.rolling <= 0 && !this.dead) this.play(this.grounded ? this.moveClip() : 'Jump', 0.1);
     }
     if (this.stumbling > 0) {
       this.stumbling -= dt;
-      if (this.stumbling <= 0 && !this.dead) this.play(this.hover ? 'Hover' : 'Run', 0.1);
+      if (this.stumbling <= 0 && !this.dead) this.play(this.moveClip(), 0.1);
     }
 
     this.height = this.rolling > 0 ? PLAYER.rollHeight : PLAYER.height;
 
-    // run animation speed follows running speed
-    if (this.current === 'Run') this.char.actions.Run.timeScale = 0.75 + speed / 22;
+    // wheel spin follows speed
+    if (this.current === 'Ride') this.char.actions.Ride.timeScale = 0.6 + speed / 14;
+    if (this.current === 'Turbo') this.char.actions.Turbo.timeScale = 1 + speed / 20;
 
-    // lean into lane changes
-    const targetTilt = this.laneT < 1 ? (this.targetLane - this.laneFrom) * -0.18 : 0;
-    this.tilt += (targetTilt - this.tilt) * Math.min(1, dt * 12);
+    // lean into lane changes (bikes lean a lot)
+    const targetTilt = this.laneT < 1 ? (this.targetLane - this.laneFrom) * -0.32 : 0;
+    this.tilt += (targetTilt - this.tilt) * Math.min(1, dt * 10);
 
     this.char.mixer.update(dt);
     this._sync();
@@ -238,20 +237,14 @@ export class Player {
   _sync() {
     this.group.position.set(this.x, this.y, this.z);
     this.group.rotation.z = this.tilt;
-    this.group.rotation.x = this.flying ? -0.25 : 0;
-    // board sits under the feet
-    if (this.board.visible) {
-      this.board.position.set(0, 0.12, 0);
-      this.board.rotation.set(0, 0, 0);
-    }
+    this.group.rotation.x = this.flying ? -0.15 : 0;
     this.shadow.position.set(this.x, this.groundY + 0.02, this.z);
     const h = Math.max(0, this.y - this.groundY);
     const s = Math.max(0.35, 1 - h * 0.12);
-    this.shadow.scale.setScalar(s);
+    this.shadow.scale.set(s, s * 1.7, 1);
     this.shadow.material.opacity = 0.3 * s;
   }
 
-  /** AABB in world space used for collisions. */
   bounds() {
     const w = PLAYER.width / 2;
     return {

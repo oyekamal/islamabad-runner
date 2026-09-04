@@ -14,7 +14,7 @@ assets.load((p) => ui.showLoading(p)).then(() => {
   window.__game = game;
   window.__ui = ui;
   const q = new URLSearchParams(location.search);
-  if (q.get('auto')) { game.startRun(); ui.showHUD(); if (q.get('pu')) setTimeout(() => game._pickup(q.get('pu')), 1500); if (q.get('hover')) setTimeout(() => game.useHoverboard(), 1200); if (q.get('coins')) game.save.data.coins = +q.get('coins'); }
+  if (q.get('auto')) { game.startRun({ startDistance: +(q.get('dist') || 0) }); ui.showHUD(); if (q.get('pu')) setTimeout(() => game._pickup(q.get('pu')), 1500); if (q.get('hover')) setTimeout(() => game.useHoverboard(), 1200); if (q.get('coins')) game.save.data.coins = +q.get('coins'); }
   else ui.showMenu();
   window.__ready = true;
 }).catch((e) => {

@@ -60,17 +60,28 @@ import { chromium } from 'playwright';
     // bot on
     await page.evaluate(() => {
       const g = window.__game;
+      window.__roofTime = 0; window.__lastT = performance.now();
       window.__botTimer = setInterval(() => {
+        const now = performance.now(); const dtb = (now - window.__lastT) / 1000; window.__lastT = now;
         if (g.state !== 'running') return;
         const p = g.player; const lane = p.targetLane;
-        const ahead = (l) => g.track.obstacles.filter((o) => o.lane === l && o.zNear < p.z + 1 && o.zNear > p.z - 16 && o.kind !== 'ramp' && !(o.kind === 'train' && p.y > 2)).sort((a, b) => b.zNear - a.zNear)[0];
+        if (p.y > 2) window.__roofTime += dtb;
+        const inLane = (l) => g.track.obstacles.filter((o) => o.lane === l && o.zNear < p.z + 1 && o.zNear > p.z - 18).sort((a, b) => b.zNear - a.zNear);
+        const ahead = (l) => {
+          const list = inLane(l);
+          const first = list[0];
+          if (!first) return null;
+          if (first.kind === 'ramp') return null;                    // ramps are good: run up them
+          if (first.kind === 'train' && p.y > 2 && first.zNear > p.z - 1) return null; // already on a roof
+          return first;
+        };
         const o = ahead(lane); if (!o) return;
         const dist = p.z - o.zNear; if (dist > 9) return;
         const free = (l) => Math.abs(l) <= 1 && !ahead(l);
-        if (o.kind === 'barrier') { if (o.type === 'barrier_high') g._onInput('down'); else g._onInput('up'); }
-        else if (o.kind === 'stumble') g._onInput('up');
+        if (o.kind === 'barrier') { if (o.type === 'barrier_high') g._onInput('down'); else if (dist < 6) g._onInput('up'); }
+        else if (o.kind === 'stumble') { if (dist < 6) g._onInput('up'); }
         else { if (free(lane - 1)) g._onInput('left'); else if (free(lane + 1)) g._onInput('right'); else if (lane === 0) g._onInput(Math.random() < 0.5 ? 'left' : 'right'); else g._onInput(lane < 0 ? 'right' : 'left'); }
-      }, 120);
+      }, 100);
     });
     while (Date.now() - start < +seconds * 1000) {
       await page.waitForTimeout(500);
@@ -81,7 +92,8 @@ import { chromium } from 'playwright';
       }
     }
     const info = await page.evaluate(() => { const g = window.__game; const m = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : '?'; return `dist=${g.distance.toFixed(0)} speed=${g.speed.toFixed(1)} score=${g.run ? g.run.score.toFixed(0) : '-'} coins=${g.run ? g.run.coins : '-'} live=${g.track.pool.live} obstacles=${g.track.obstacles.length} decor=${g.track.decor.length} coinsLive=${g.track.coins.items.length} calls=${g.renderer.info.render.calls} geoms=${g.renderer.info.memory.geometries} heap=${m}`; });
-    console.log('SOAK', info, 'deaths=' + deaths, JSON.stringify(causes));
+    const roof = await page.evaluate(() => window.__roofTime.toFixed(1));
+    console.log('SOAK', info, 'deaths=' + deaths, JSON.stringify(causes), 'roofTime=' + roof);
     await page.screenshot({ path: `${prefix}_soak.png` });
   }
   if (mode === 'ui') {
