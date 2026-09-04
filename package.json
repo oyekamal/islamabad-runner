@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "assets": "python3 tools/blender/character.py && python3 tools/blender/props.py && python3 tools/blender/pickups.py && python3 tools/blender/scenery.py",
+    "assets": "python3 tools/blender/biker.py && python3 tools/blender/props.py && python3 tools/blender/pickups.py && python3 tools/blender/scenery.py",
     "android": "npm run build && npx cap sync android",
     "shots": "node tools/play.js shots/play 8 450 800 auto 4"
   },
