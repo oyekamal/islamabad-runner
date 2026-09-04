@@ -1,0 +1,29 @@
+{
+  "name": "islamabad-runner-3d",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "assets": "python3 tools/blender/biker.py && python3 tools/blender/props.py && python3 tools/blender/pickups.py && python3 tools/blender/scenery.py",
+    "android": "npm run build && npx cap sync android",
+    "shots": "node tools/play.js shots/play 8 450 800 auto 4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1",
+    "vite": "^6.4.3"
+  },
+  "private": true,
+  "type": "module"
+}

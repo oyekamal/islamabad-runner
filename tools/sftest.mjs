@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--no-sandbox'] });
+const page = await browser.newPage({ viewport: { width: 450, height: 800 } });
+const logs = []; page.on('pageerror', (e) => logs.push('PAGEERROR ' + e.message)); page.on('console', (m) => { if (m.type() === 'error') logs.push(m.text()); });
+await page.goto('file:///home/claude/islamabad-runner-3d/islamabad-runner-3d.html?auto=1');
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 }).catch(() => logs.push('not ready'));
+await page.waitForTimeout(3000);
+await page.screenshot({ path: 'shots/singlefile.png' });
+console.log(await page.evaluate(() => window.__game ? 'state=' + window.__game.state + ' dist=' + window.__game.distance.toFixed(0) : 'no game'), logs.join(' | '));
+await browser.close();

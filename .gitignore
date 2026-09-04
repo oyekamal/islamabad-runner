@@ -1,3 +1,16 @@
 venv/
 __pycache__/
 *.pyc
+
+node_modules
+dist
+shots
+*.log
+.DS_Store
+android/app/build
+android/.gradle
+android/build
+android/local.properties
+*.keystore
+artifact.html
+islamabad-runner-3d.html

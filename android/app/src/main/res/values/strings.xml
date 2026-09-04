@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Islamabad Runner</string>
+    <string name="title_activity_main">Islamabad Runner</string>
+    <string name="package_name">com.oyekamal.islamabadrunner</string>
+    <string name="custom_url_scheme">com.oyekamal.islamabadrunner</string>
+</resources>

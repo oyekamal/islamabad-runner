@@ -1,19 +1,97 @@
 # Islamabad Runner
 
-A 60–90s auto-scrolling motorcycle runner prototype built with Python/pygame,
-satirizing the chaos of getting across Islamabad during a protest lockdown.
+A satirical endless runner set on the roads of Islamabad during a protest-lockdown
+day: containers seal every intersection, rangers patrol on foot, teargas hangs in
+the air, army jeeps come the other way, and the mobile internet is down. You're a
+biker just trying to get to D-Chowk.
 
-You're a biker trying to reach D-Chowk before your HP runs out or you get arrested.
-The road is closed, the containers are stacked, the rangers are out, and the
-mobile internet is down — but you ride anyway.
+This repo holds **two builds of the same idea**, in the order they were made:
 
-## The idea
+1. **2D prototype** (`game.py`) — a 60–90s pygame side-scroller, the original concept test.
+2. **3D game** (`index.html` / `src/`) — a full Subway-Surfers-style rebuild in
+   Three.js, with a Capacitor Android wrapper and Play Store listing assets.
 
-Three-lane endless runner, but themed entirely around a Pakistani protest/lockdown
-day: shipping containers blocking the road, teargas canisters rolling at you,
-traffic cones, rangers on foot patrol, and an army jeep once you're deep in. You
-dodge on your bike, grab WhatsApp icons to charge turbo (because that's the only
-way messages get through when mobile data's cut) and biryani boxes to heal HP.
+The 3D build is the one to actually play; the pygame prototype is kept as the
+original proof of concept the idea was validated with.
+
+## 3D game (Three.js)
+
+![Menu](docs/screenshot-3d-menu.png)
+![Gameplay](docs/screenshot-3d-gameplay.png)
+
+Subway-Surfers mechanics, Islamabad skin:
+
+| Action | Input | Notes |
+|---|---|---|
+| Change lane | swipe left / right (A/D, ←/→) | three lanes, bike leans into the turn |
+| Jump | swipe up (W/↑/space) | clears barricades, cones, tyre piles |
+| Duck ("roll") | swipe down (S/↓) | slides under ROAD CLOSED gantries, tape, teargas; fast-falls in the air |
+| Turbo | double-tap (H) | 30s boost, saves you from one crash |
+| Pause | ⏸ / Esc | |
+
+- **Containers, container trucks, Metro buses** are the "trains" — ride dirt ramps onto their roofs, hop between them.
+- **Army jeeps** are the oncoming trains — lethal.
+- **Rangers, cones, tyre piles** make you stumble; two stumbles near rangers = arrested.
+- **Signal bubbles** (WhatsApp icon from the prototype) — collect 3 for a Turbo.
+- **Biryani box** = mystery box: coins, keys, Turbos, headstarts, character tokens.
+- **Keys** revive you. Jetpack, Nitro Springs, Coin Magnet, 2X Multiplier are shop-upgradable power-ups.
+- **Zones** loop every 3000m, same as the prototype: Faisal Avenue → Srinagar Chokepoint → Red Zone → D-Chowk final sprint. Reaching D-Chowk pays a bonus; getting arrested shows the prototype's lose line.
+- 7 riders, 6 bikes, 50 mission sets (up to 30x multiplier), Daily Word Hunt with streak rewards, local leaderboard, procedural music & SFX. No ads, no tracking, fully offline.
+
+### Run it (web)
+
+```bash
+npm install
+npm run dev       # Vite dev server → http://localhost:5173
+npm run build     # production build → dist/
+```
+
+### Run it (Android)
+
+```bash
+npm run android   # builds web, then npx cap sync android
+# open android/ in Android Studio to run on device/emulator
+```
+
+### Regenerate assets
+
+```bash
+npm run assets     # runs the Blender scripts in tools/blender/*.py → public/models/*.glb
+```
+
+### Project layout
+
+```
+index.html, src/            Vite + Three.js game (ES modules)
+  src/game/Game.js          state machine, scoring, power-ups, camera
+  src/game/Track.js         procedural road: lane plans, obstacles, scenery, collisions
+  src/game/Player.js        biker controller (lanes, jump, duck, turbo, jetpack)
+  src/game/Chaser.js        the two rangers
+  src/ui/UI.js, ui.css      HUD, menus, shop, missions, word hunt, settings
+  src/data/                 characters, bikes, missions, daily words
+tools/blender/*.py          bpy scripts that generate EVERY 3D asset (public/models/*.glb)
+tools/play.js               headless Playwright harness (screenshots, bot, soak test)
+android/                    Capacitor Android project (API 36, portrait, immersive)
+store/                      Play Store icon, feature graphic, splash
+docs/store-listing.md       listing copy + data-safety answers
+public/privacy.html         privacy policy (host it and paste the URL in Play Console)
+```
+
+### Store assets
+
+| | |
+|---|---|
+| ![icon](store/play-store-icon-512.png) | ![feature graphic](store/feature-graphic-1024x500.png) |
+
+---
+
+## 2D prototype (pygame)
+
+The original concept test — a 60–90s auto-scrolling motorcycle runner. Tap to
+jump, hold to duck, double-tap to turbo. Reach D-Chowk (distance goal) to win;
+0 HP = arrested.
+
+![2D prototype preview](preview_frame.png)
 
 The run is split into four zones that get progressively more hostile:
 
@@ -29,7 +107,7 @@ blocked. But you made it."
 **Lose:** HP hits 0 — "Arrested. 954 others join you today. Section 144 is still
 in effect."
 
-## Character & obstacles
+### Character & obstacles
 
 | Sprite | Role |
 |---|---|
@@ -42,10 +120,9 @@ in effect."
 | WhatsApp icon | Collectible — fills turbo meter |
 | Biryani box | Collectible — restores 1 HP |
 
-Player starts with 3 HP and a 1.2s invulnerability window (sprite flickers) after
-each hit.
+Player starts with 3 HP and a 1.2s invulnerability window (sprite flickers) after each hit.
 
-## Controls
+### Controls
 
 | Input | Action |
 |---|---|
@@ -53,7 +130,7 @@ each hit.
 | Hold Down arrow | Duck |
 | Double-tap | Turbo boost (needs a full turbo meter, 1.8x speed for 2s) |
 
-## Run it
+### Run it
 
 ```bash
 python3 -m venv venv
@@ -62,7 +139,7 @@ pip install pygame
 python3 game.py
 ```
 
-## Assets
+### Assets
 
 Two asset pipelines exist, both procedural (no hand-drawn or purchased art):
 
@@ -85,8 +162,7 @@ teargas green-yellow, biryani brown/saffron). This is what's on screen in-game:
 
 **`generate_assets.py`** — an earlier/alternate pass that calls Pollinations.ai
 (free text-to-image, `flux` model) for a more painterly sprite set plus the
-**background art**, one per zone, all real Islamabad geography reskinned for the
-runner:
+background art, one per zone, all real Islamabad geography reskinned for the runner:
 
 | Background | Setting |
 |---|---|
@@ -96,13 +172,16 @@ runner:
 | `bg_finish` | D-Chowk — the parliament gate and open plaza, the finish line (Zone 4) |
 
 There's also an unused `ui/logo` prompt (motorcycle-runner title art, blue/yellow-green,
-smoggy backdrop) generated but not yet wired into `game.py`, which currently draws
-its zone backgrounds as flat colors + simple shapes rather than these AI images.
+smoggy backdrop) generated but never wired into `game.py`, which draws its zone
+backgrounds as flat colors + simple shapes rather than these AI images.
 
-Preview frames from a test run are in the repo root (`preview_frame*.png`, `preview_win.png`).
+More preview frames from a test run: `preview_frame2.png`, `preview_frame3.png`, `preview_win.png`.
 
-## Status
+## Original design spec
 
-Prototype — single-file game loop in `game.py` (~500 lines), no packaging/build
-step, no sound, no menu beyond the ready/win/lose overlays. Built as a fast
-concept test, not a polished release.
+The game started from a design doc written before either build:
+`docs/superpowers/specs/2026-07-02-islamabad-runner-design.md` in the
+[personal-agent-v2](https://github.com/oyekamal) repo — targets Flutter/Flutter
+Flame and maps obstacles to real protest locations (Peshawar Mor → Faisal Avenue
+→ Zero Point → D-Chowk). Both builds here are implementations of that same idea
+on different engines (pygame, then Three.js).

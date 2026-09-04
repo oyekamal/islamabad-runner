@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}canvas{display:block}</style></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const q = new URLSearchParams(location.search);
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(28, W / H, 0.1, 100);
+const pose = q.get('pose') || 'icon';
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 1.3));
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.0); sun.position.set(-3, 6, 5); scene.add(sun);
+new GLTFLoader().load('/models/biker.glb', (g) => {
+  g.scene.traverse((o) => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; o.material = ms.map((m) => new THREE.MeshLambertMaterial({ color: m.color })); if (o.material.length === 1) o.material = o.material[0]; } });
+  scene.add(g.scene);
+  const mixer = new THREE.AnimationMixer(g.scene);
+  const clip = g.animations.find((a) => a.name === 'Ride');
+  const a = mixer.clipAction(clip); a.play(); mixer.setTime(pose === 'icon' ? 0.12 : 0.05);
+  if (pose === 'icon') { g.scene.rotation.y = Math.PI + 0.7; cam.position.set(1.6, 1.9, 4.2); cam.lookAt(0, 1.1, 0); }
+  else { g.scene.rotation.y = Math.PI + 0.5; cam.position.set(1.6, 1.6, 5.6); cam.lookAt(0, 1.0, 0); }
+  renderer.render(scene, cam);
+  window.__done = true;
+});
+</script></body></html>
