@@ -20,11 +20,13 @@ PROPS = []
 _cursor_x = 0.0
 
 
-def register(objs, name, origin=(0, 0, 0)):
+def register(objs, name, origin=(0, 0, 0), tex="grime", uv_scale=2.0, alpha=None, ao=True):
     """Join parts into a prop, set origin, and shelve it to the side."""
     global _cursor_x
     o = join(objs, name)
     set_origin(o, origin)
+    o["tex"] = tex; o["uv_scale"] = uv_scale; o["ao"] = ao
+    if alpha is not None: o["alpha"] = alpha
     _cursor_x += 6.0
     o.location = (_cursor_x, 0, 0)
     PROPS.append(o)
@@ -83,7 +85,7 @@ def train_passenger():
         o.append(cyl("lamp", 0.16, 0.08, (0, yy + face * 0.14, 2.1), yellow, rot=(90, 0, 0), verts=12))
         o.append(box("coupler", (0.3, 0.4, 0.25), (0, yy + face * 0.15, 0.6), dark))
     wheels(o, 0, L, dark)
-    register(o, "train_passenger")
+    register(o, "train_passenger", tex="rust_metal", uv_scale=3.0)
 
 
 def train_metro():
@@ -115,7 +117,13 @@ def train_metro():
     for yy in (1.8, L - 1.8):
         for sx in (-1, 1):
             o.append(cyl("wheel", 0.45, 0.3, (sx * 0.85, yy, 0.45), dark, rot=(0, 90, 0), verts=14))
-    register(o, "train_metro")
+            o.append(cyl("hubcap", 0.2, 0.32, (sx * 0.85, yy, 0.45), grey, rot=(0, 90, 0), verts=10))
+    for sx in (-1, 1):
+        o.append(text_mesh("METRO BUS", 0.28, (sx * (TRAIN_W / 2 + 0.06), L / 2, 1.3), white, rot=(90, 0, 90 if sx > 0 else -90), extrude=0.01))
+        o.append(box("mirror_arm", (0.3, 0.04, 0.04), (sx * 1.15, 0.5, 1.9), dark))
+        o.append(box("mirror", (0.06, 0.18, 0.3), (sx * 1.3, 0.5, 1.95), dark))
+    o.append(box("dest_sign", (1.2, 0.04, 0.3), (0, -0.02, 2.35), mat("dest_amber", "#ffb300", emissive="#ffb300", emissive_strength=1.2)))
+    register(o, "train_metro", tex="rust_metal", uv_scale=3.0)
 
 
 def train_freight():
@@ -137,7 +145,7 @@ def train_freight():
             for sx in (-1, 1):
                 o.append(box("rib", (0.05, 0.12, 1.4), (sx * (TRAIN_W / 2 - 0.02), ry, 1.85), cm))
         o.append(box("cdoor", (TRAIN_W - 0.3, 0.06, 1.3), (0, yy - (L / 4 - 0.25) - 0.02, 1.85), dark))
-    register(o, "train_freight")
+    register(o, "train_freight", tex="rust_metal", uv_scale=3.0)
 
 
 def train_ramp():
@@ -157,7 +165,7 @@ def train_ramp():
         y0 = i * L / steps
         h = (i + 1) * TRAIN_H / steps
         o.append(box("stripe", (TRAIN_W + 0.02, 0.15, h + 0.01), (0, y0 + L / steps - 0.1, h / 2), yellow if i % 2 else dark))
-    register(o, "train_ramp")
+    register(o, "train_ramp", tex="rust_metal", uv_scale=2.0)
 
 
 # ----------------------------------------------------------------------------
@@ -177,7 +185,7 @@ def barrier_low():
         o.append(box("leg", (0.10, 0.10, 0.95), (sx * 0.92, 0, 0.48), dark))
         o.append(box("foot", (0.20, 0.50, 0.06), (sx * 0.92, 0, 0.03), dark))
     o.append(box("light", (0.18, 0.18, 0.12), (0, 0, 1.02), mat("amber", "#ffb300", emissive="#ffb300", emissive_strength=2.0)))
-    register(o, "barrier_low")
+    register(o, "barrier_low", tex="rust_metal", uv_scale=1.5)
 
 
 def barrier_high():
@@ -196,7 +204,7 @@ def barrier_high():
     o.append(box("arrow_head", (0.25, 0.03, 0.25), (-0.05, -0.07, 2.15), white, rot=(0, 45, 0)))
     for i in range(3):
         o.append(box("txt", (0.45, 0.03, 0.08), (0.55, -0.07, 2.42 - i * 0.27), white))
-    register(o, "barrier_high")
+    register(o, "barrier_high", tex="rust_metal", uv_scale=1.5)
 
 
 def barrier_mid():
@@ -212,7 +220,7 @@ def barrier_mid():
         o.append(cyl("pole", 0.05, 1.85, (sx * 0.95, 0, 0.93), white, verts=8))
         o.append(cyl("pole_base", 0.22, 0.08, (sx * 0.95, 0, 0.04), dark, verts=10))
         o.append(box("pole_stripe", (0.11, 0.11, 0.3), (sx * 0.95, 0, 1.2), mat("bar_red", "#e0382b")))
-    register(o, "barrier_mid")
+    register(o, "barrier_mid", tex="rust_metal", uv_scale=1.5)
 
 
 def barrier_wall():
@@ -222,7 +230,7 @@ def barrier_wall():
     o = []
     o.append(box("block", (TRAIN_W, 0.9, 1.1), (0, 0.45, 0.55), conc, bevel=0.04))
     o.append(box("stripe", (TRAIN_W + 0.02, 0.06, 0.25), (0, 0.0, 0.7), red))
-    register(o, "barrier_block")
+    register(o, "barrier_block", tex="plaster", uv_scale=1.5)
 
 
 def bush():
@@ -234,7 +242,7 @@ def bush():
     o.append(sphere("b1", 0.55, (-0.4, 0, 0.8), g1, seg=10, rings=6))
     o.append(sphere("b2", 0.6, (0.35, 0.05, 0.85), g2, seg=10, rings=6))
     o.append(sphere("b3", 0.45, (0, -0.1, 1.05), g1, seg=10, rings=6))
-    register(o, "bush")
+    register(o, "bush", tex="foliage", uv_scale=1.2)
 
 
 def light_pole():
@@ -249,7 +257,7 @@ def light_pole():
     o.append(box("head", (0.34, 0.26, 0.7), (0, 0, 2.6), dark, bevel=0.03))
     o.append(cyl("l1", 0.1, 0.05, (0, -0.14, 2.78), red, rot=(90, 0, 0), verts=12))
     o.append(cyl("l2", 0.1, 0.05, (0, -0.14, 2.45), green, rot=(90, 0, 0), verts=12))
-    register(o, "light_pole")
+    register(o, "light_pole", tex="rust_metal", uv_scale=2.0)
 
 
 # ----------------------------------------------------------------------------
@@ -283,7 +291,7 @@ def tunnel():
             o.append(box("tg", (0.05, 1.6, 1.0), (sx * (W / 2 - 0.37), 2 + k * 4, 1.9), (mat("g_pink", "#e83e8c"), mat("g_yellow", "#ffcc33"), mat("g_teal", "#1fb2a6"))[k], bevel=0.1))
     o.append(box("trim", (W + 0.7, 0.3, 0.4), (0, 0.15, H + 0.2), trim))
     o.append(box("trim2", (W + 0.7, 0.3, 0.4), (0, L - 0.15, H + 0.2), trim))
-    register(o, "tunnel")
+    register(o, "tunnel", tex="plaster", uv_scale=3.0)
 
 
 def pillar():
@@ -296,7 +304,7 @@ def pillar():
     o.append(box("cap", (1.9, 1.9, 0.4), (0, 0.7, 4.6), conc))
     for i in range(4):
         o.append(box("stripe", (1.44, 1.44, 0.18), (0, 0.7, 0.3 + i * 0.36), yellow if i % 2 == 0 else dark))
-    register(o, "pillar")
+    register(o, "pillar", tex="plaster", uv_scale=2.5)
 
 
 def overpass():
@@ -307,7 +315,7 @@ def overpass():
     o.append(box("deck", (11, 3.0, 0.5), (0, 1.5, 5.0), conc))
     o.append(box("rail1", (11, 0.1, 0.9), (0, 0.1, 5.7), rail))
     o.append(box("rail2", (11, 0.1, 0.9), (0, 2.9, 5.7), rail))
-    register(o, "overpass")
+    register(o, "overpass", tex="plaster", uv_scale=3.0)
 
 
 def station_platform():
@@ -325,7 +333,7 @@ def station_platform():
         o.append(cyl("post", 0.1, 3.4, (0.8, yy, 2.7), steel, verts=8))
     o.append(box("roof", (3.6, L, 0.15), (0.2, L / 2, 4.4), canopy))
     o.append(box("bench", (0.5, 1.8, 0.45), (1.0, L / 2, 1.22), steel))
-    register(o, "station_platform")
+    register(o, "station_platform", tex="plaster", uv_scale=3.0)
 
 
 # ----------------------------------------------------------------------------
@@ -347,7 +355,7 @@ def ground_tile():
             o.append(box("rail", (0.08, L, 0.10), (lane + sx * 0.55, L / 2, 0.05), rail))
     for sx in (-1, 1):
         o.append(box("kerb", (0.5, L, 0.35), (sx * 4.05, L / 2, 0.05), kerb))
-    register(o, "ground_tile")
+    register(o, "ground_tile", tex="asphalt", uv_scale=4.0)
 
 
 def wall_segment():
@@ -366,7 +374,7 @@ def wall_segment():
     for i, pm in enumerate((poster1, poster2, poster3)):
         o.append(box("poster", (0.06, 2.4, 1.5), (-0.33, 2.2 + i * 3.8, 1.9), pm))
         o.append(box("pframe", (0.04, 2.6, 1.7), (-0.31, 2.2 + i * 3.8, 1.9), dark))
-    register(o, "wall_segment")
+    register(o, "wall_segment", tex="plaster", uv_scale=3.0)
 
 
 def container_stack():
@@ -375,7 +383,7 @@ def container_stack():
     o = []
     for i, cm in enumerate(cols):
         o.append(box("cont", (2.4, 6.0, 2.4), (0, 3.0 + (i % 2) * 0.4, 1.2 + i * 2.4), cm, bevel=0.03))
-    register(o, "container_stack")
+    register(o, "container_stack", tex="rust_metal", uv_scale=3.0)
 
 
 
@@ -411,7 +419,7 @@ def wall_graffiti(idx):
     # occasional drain pipe / lamp bracket
     if idx % 3 == 0:
         o.append(cyl("pipe", 0.06, 3.2, (-0.36, 1.0, 1.6), dark, verts=8))
-    register(o, f"wall_graffiti_{idx}")
+    register(o, f"wall_graffiti_{idx}", tex="plaster", uv_scale=3.0)
 
 
 def lamp_post():
@@ -421,7 +429,7 @@ def lamp_post():
          box("arm", (1.4, 0.1, 0.1), (-0.65, 0, 4.95), grey),
          box("head", (0.6, 0.3, 0.15), (-1.3, 0, 4.9), grey),
          box("bulb", (0.5, 0.24, 0.05), (-1.3, 0, 4.81), lamp)]
-    register(o, "lamp_post")
+    register(o, "lamp_post", tex="rust_metal", uv_scale=2.0)
 
 
 def dhaba():
@@ -443,7 +451,7 @@ def dhaba():
     for x in (-0.8, 0.0, 0.8):
         o.append(cyl("stool", 0.2, 0.05, (x, -0.8, 0.45), wood, verts=8))
         o.append(cyl("stool_leg", 0.04, 0.45, (x, -0.8, 0.22), steel, verts=6))
-    register(o, "dhaba")
+    register(o, "dhaba", tex="grime", uv_scale=1.5)
 
 
 def bench():
@@ -451,7 +459,7 @@ def bench():
     steel = mat("gantry", "#6b7280")
     o = [box("seat", (1.8, 0.5, 0.08), (0, 0, 0.45), wood), box("back", (1.8, 0.08, 0.5), (0, -0.25, 0.75), wood),
          box("leg1", (0.08, 0.5, 0.45), (-0.8, 0, 0.22), steel), box("leg2", (0.08, 0.5, 0.45), (0.8, 0, 0.22), steel)]
-    register(o, "bench")
+    register(o, "bench", tex="grime", uv_scale=1.0)
 
 
 def rickshaw():
@@ -472,7 +480,7 @@ def rickshaw():
         o.append(box("deco2", (0.06, 0.3, 0.3), (0.66, -0.7 + i * 0.45, 0.9), red if i % 2 else yellow))
     for x in (-0.4, 0.4):
         o.append(cyl("pole", 0.04, 0.7, (x, -1.0, 1.35), dark, verts=6))
-    register(o, "rickshaw")
+    register(o, "rickshaw", tex="rust_metal", uv_scale=1.5)
 
 
 
@@ -486,7 +494,7 @@ def gantry():
         o.append(box("truss", (0.08, 0.08, 0.45), (-3.5 + i * 1.0, 0, 5.7), steel))
     for lane in (-2.2, 0, 2.2):
         o.append(box("hanger", (0.06, 0.06, 0.3), (lane, 0, 5.72), dark))
-    register(o, "gantry")
+    register(o, "gantry", tex="rust_metal", uv_scale=2.0)
 
 
 def wires():
@@ -495,7 +503,7 @@ def wires():
     o = []
     for lane in (-2.2, 0, 2.2):
         o.append(box("wire", (0.025, 12.0, 0.025), (lane, 6.0, 5.6), dark))
-    register(o, "wires")
+    register(o, "wires", tex=None, ao=False)
 
 
 def station_roof():
@@ -515,7 +523,7 @@ def station_roof():
     o.append(box("skylight", (3.0, L - 1, 0.1), (0, L / 2, 6.75), glass))
     o.append(box("edge_l", (0.3, L, 0.5), (-5.2, L / 2, 6.45), steel))
     o.append(box("edge_r", (0.3, L, 0.5), (5.2, L / 2, 6.45), steel))
-    register(o, "station_roof")
+    register(o, "station_roof", tex="rust_metal", uv_scale=3.0)
 
 
 
@@ -552,32 +560,66 @@ def road_tile():
         # greenbelt + footpath
         o.append(box("grass", (2.0, L, 0.22), (sx * 5.0, L / 2, 0.0), grass))
         o.append(box("path", (1.2, L, 0.24), (sx * 6.6, L / 2, 0.0), path))
-    register(o, "road_tile")
+    register(o, "road_tile", tex="asphalt", uv_scale=3.0)
 
 
 def container(idx):
     """40 ft shipping container placed along the lane: 12 m long, 2.0 wide, roof at 2.6. Ridable."""
+    import random
+    rng = random.Random(100 + idx)
     cols = [("cont_blue", "#1f4fa3"), ("cont_red", "#c8322b"), ("cont_orange", "#f08a1d"), ("cont_green", "#2a8c4a"), ("cont_maroon", "#7a2a3a"), ("cont_grey", "#7b8794")]
-    cm = mat(*cols[idx % len(cols)])
+    name, hexc = cols[idx % len(cols)]
+    cm = mat(name, hexc)
+    # darker shade for rust patches / recesses
+    r, g, b = int(hexc[1:3], 16), int(hexc[3:5], 16), int(hexc[5:7], 16)
+    dark_hex = "#%02x%02x%02x" % (int(r * 0.55), int(g * 0.5), int(b * 0.45))
+    cd = mat(name + "_dark", dark_hex)
     dark = mat("pr_dark", "#2b2b2b")
+    rust = mat("rust", "#7a4a2a")
+    white = mat("stencil_white", "#f2f2f2")
     o = []
     L = COACH_L
     o.append(box("body", (TRAIN_W, L - 0.1, TRAIN_H - 0.15), (0, L / 2, (TRAIN_H - 0.15) / 2 + 0.05), cm, bevel=0.03))
     o.append(box("roof", (TRAIN_W - 0.1, L - 0.3, 0.12), (0, L / 2, TRAIN_H - 0.06), cm))
-    # corrugation ribs on both sides and top rails
-    for k in range(11):
-        ry = 0.6 + k * (L - 1.2) / 10
+    for k in range(4):   # roof ribs
+        o.append(box("roof_rib", (TRAIN_W - 0.2, 0.08, 0.04), (0, 1.5 + k * 3.0, TRAIN_H + 0.02), cd))
+    # corrugation ribs on both sides
+    for k in range(13):
+        ry = 0.5 + k * (L - 1.0) / 12
         for sx in (-1, 1):
-            o.append(box("rib", (0.06, 0.14, TRAIN_H - 0.4), (sx * (TRAIN_W / 2 - 0.01), ry, TRAIN_H / 2), cm))
+            o.append(box("rib", (0.06, 0.12, TRAIN_H - 0.5), (sx * (TRAIN_W / 2 - 0.01), ry, TRAIN_H / 2), cm))
     for sx in (-1, 1):
         o.append(box("rail", (0.08, L, 0.08), (sx * (TRAIN_W / 2 - 0.02), L / 2, TRAIN_H - 0.02), dark))
-        o.append(box("rail_b", (0.08, L, 0.10), (sx * (TRAIN_W / 2 - 0.02), L / 2, 0.1), dark))
-    # doors at the near end with locking bars
+        o.append(box("rail_b", (0.08, L, 0.12), (sx * (TRAIN_W / 2 - 0.02), L / 2, 0.11), dark))
+        # rivet rows
+        for k in range(12):
+            o.append(box("rivet", (0.03, 0.05, 0.05), (sx * (TRAIN_W / 2 + 0.03), 0.5 + k * 0.95, 0.4), dark))
+            o.append(box("rivet_t", (0.03, 0.05, 0.05), (sx * (TRAIN_W / 2 + 0.03), 0.5 + k * 0.95, TRAIN_H - 0.3), dark))
+        # rust patches
+        for k in range(3):
+            o.append(box("rust", (0.03, rng.uniform(0.4, 1.2), rng.uniform(0.2, 0.6)), (sx * (TRAIN_W / 2 + 0.035), rng.uniform(1.5, L - 1.5), rng.uniform(0.35, 1.2)), rust if k == 0 else cd))
+        # stencil id text
+        o.append(text_mesh(f"ISB {2000 + idx * 137 % 900}", 0.32, (sx * (TRAIN_W / 2 + 0.045), L * 0.7, 1.9), white, rot=(90, 0, 90 if sx > 0 else -90), extrude=0.01))
+    # corner castings + fork pockets
+    for sx in (-1, 1):
+        for yy in (0.15, L - 0.15):
+            o.append(box("cast", (0.2, 0.2, 0.25), (sx * (TRAIN_W / 2 - 0.08), yy, 0.2), dark))
+            o.append(box("cast_t", (0.2, 0.2, 0.25), (sx * (TRAIN_W / 2 - 0.08), yy, TRAIN_H - 0.15), dark))
+    for yy in (L * 0.35, L * 0.65):
+        o.append(box("fork_pocket", (TRAIN_W + 0.02, 0.4, 0.14), (0, yy, 0.22), dark))
+    # doors at the near end with locking bars & hinges
     o.append(box("door", (TRAIN_W - 0.2, 0.05, TRAIN_H - 0.5), (0, 0.02, TRAIN_H / 2), cm))
+    o.append(box("door_seam", (0.03, 0.06, TRAIN_H - 0.6), (0, -0.01, TRAIN_H / 2), dark))
     for x in (-0.55, -0.25, 0.25, 0.55):
         o.append(box("lockbar", (0.06, 0.08, TRAIN_H - 0.7), (x, -0.02, TRAIN_H / 2), dark))
+        for zz in (0.5, TRAIN_H - 0.6):
+            o.append(box("bracket", (0.12, 0.10, 0.10), (x, -0.03, zz), dark))
+    for sx in (-1, 1):
+        for zz in (0.6, 1.3, 2.0):
+            o.append(cyl("hinge", 0.04, 0.16, (sx * (TRAIN_W / 2 - 0.06), -0.02, zz), dark, verts=8))
     o.append(box("handle", (0.5, 0.06, 0.06), (0, -0.05, 1.1), dark))
-    register(o, f"container_{idx}")
+    o.append(box("placard", (0.3, 0.02, 0.3), (0.6, -0.05, 1.7), mat("placard_orange", "#f08a1d")))
+    register(o, f"container_{idx}", tex="rust_metal", uv_scale=2.6)
 
 
 def container_truck():
@@ -605,7 +647,7 @@ def container_truck():
     for yy in (1.5, 3.0, L - 1.2):
         for sx in (-1, 1):
             o.append(cyl("wheel", 0.5, 0.35, (sx * 0.85, yy, 0.5), cab_dark, rot=(0, 90, 0), verts=14))
-    register(o, "container_truck")
+    register(o, "container_truck", tex="rust_metal", uv_scale=2.6)
 
 
 def army_jeep():
@@ -614,24 +656,45 @@ def army_jeep():
     olive_dark = mat("olive_dark", "#3e4a27")
     dark = mat("pr_dark", "#2b2b2b")
     glass = mat("jeep_glass", "#9fc8e0", rough=0.2)
+    steel = mat("steel", "#5b6770")
+    sand = mat("jerrycan", "#8a7a45")
     o = []
     L = 5.0
     o.append(box("body", (2.0, L - 0.4, 0.9), (0, L / 2, 0.95), olive, bevel=0.06))
     o.append(box("hood", (1.9, 1.6, 0.5), (0, 1.0, 1.35), olive, bevel=0.06))
+    o.append(box("hood_vent", (0.8, 0.5, 0.04), (0, 1.2, 1.62), olive_dark))
     o.append(box("cabin", (1.9, 2.4, 0.9), (0, 3.2, 1.85), olive, bevel=0.08))
     o.append(box("roof", (2.0, 2.6, 0.1), (0, 3.2, 2.35), olive_dark))
+    o.append(box("rack", (1.6, 2.0, 0.06), (0, 3.4, 2.44), steel))
+    for sx in (-1, 1):
+        o.append(box("rack_rail", (0.05, 2.0, 0.12), (sx * 0.8, 3.4, 2.5), steel))
+    o.append(box("jerrycan", (0.5, 0.25, 0.4), (-0.4, 3.9, 2.66), sand, bevel=0.03))
+    o.append(box("jerrycan2", (0.5, 0.25, 0.4), (0.2, 3.9, 2.66), olive_dark, bevel=0.03))
     o.append(box("windshield", (1.7, 0.06, 0.7), (0, 2.0, 1.85), glass))
+    o.append(box("ws_frame", (1.8, 0.08, 0.06), (0, 2.0, 2.22), olive_dark))
     o.append(box("grille", (1.2, 0.08, 0.5), (0, 0.24, 1.0), dark))
+    for k in range(5):
+        o.append(box("slat", (1.1, 0.06, 0.03), (0, 0.19, 0.82 + k * 0.09), steel))
     o.append(box("bumper", (2.1, 0.2, 0.25), (0, 0.15, 0.6), dark))
     for sx in (-1, 1):
+        o.append(box("hook", (0.12, 0.2, 0.1), (sx * 0.7, 0.05, 0.62), steel))
         o.append(cyl("headlight", 0.15, 0.06, (sx * 0.7, 0.22, 1.15), mat("headlamp", "#fff2b0", emissive="#fff2b0", emissive_strength=2), rot=(90, 0, 0), verts=12))
+        o.append(cyl("hl_rim", 0.18, 0.04, (sx * 0.7, 0.24, 1.15), dark, rot=(90, 0, 0), verts=12))
         o.append(box("win_side", (0.06, 1.6, 0.6), (sx * 0.96, 3.2, 1.9), glass))
+        o.append(box("door_line", (0.02, 0.03, 0.9), (sx * 1.0, 3.2, 1.0), olive_dark))
+        o.append(box("mirror_arm", (0.25, 0.04, 0.04), (sx * 1.1, 2.1, 1.75), dark))
+        o.append(box("mirror", (0.06, 0.16, 0.2), (sx * 1.22, 2.1, 1.8), dark))
+        o.append(box("step", (0.2, 1.4, 0.06), (sx * 1.05, 3.2, 0.5), dark))
         for yy in (1.1, 3.9):
-            o.append(cyl("wheel", 0.48, 0.4, (sx * 0.9, yy, 0.48), dark, rot=(0, 90, 0), verts=14))
+            o.append(box("arch", (0.12, 1.3, 0.5), (sx * 0.98, yy, 0.85), olive_dark, bevel=0.05))
+            o.append(cyl("wheel", 0.48, 0.4, (sx * 0.9, yy, 0.48), dark, rot=(0, 90, 0), verts=16))
+            o.append(cyl("hubcap", 0.22, 0.42, (sx * 0.9, yy, 0.48), steel, rot=(0, 90, 0), verts=10))
     o.append(box("antenna", (0.04, 0.04, 1.6), (-0.8, 4.4, 3.0), dark))
     o.append(box("spare", (0.35, 0.9, 0.9), (0, L - 0.05, 1.2), dark, bevel=0.1))
-    o.append(box("light_bar", (1.2, 0.3, 0.2), (0, 3.2, 2.5), mat("siren_blue", "#2a6bff", emissive="#2a6bff", emissive_strength=2)))
-    register(o, "army_jeep")
+    o.append(box("light_bar", (1.2, 0.3, 0.2), (0, 3.2, 2.6), mat("siren_blue", "#2a6bff", emissive="#2a6bff", emissive_strength=2)))
+    o.append(box("light_bar_r", (0.4, 0.32, 0.22), (0.5, 3.2, 2.6), mat("siren_red", "#ff2a2a", emissive="#ff2a2a", emissive_strength=2)))
+    o.append(text_mesh("ARMY", 0.26, (0, 1.1, 1.62), mat("stencil_white", "#f2f2f2"), rot=(0, 0, 180), extrude=0.005))
+    register(o, "army_jeep", tex="rust_metal", uv_scale=2.0)
 
 
 def dirt_ramp():
@@ -650,7 +713,7 @@ def dirt_ramp():
     for k in range(2):
         x = -0.5 + k * 1.0
         o.append(beam(f"plank_{k}", (x, 0.0, 0.03), (x, L, TRAIN_H + 0.03), 0.7, wood if k else wood_dark, thick2=0.08))
-    register(o, "dirt_ramp")
+    register(o, "dirt_ramp", tex="grime", uv_scale=1.5)
 
 
 def police_barricade():
@@ -666,6 +729,7 @@ def police_barricade():
     o.append(box("sign", (1.1, 0.06, 0.26), (0, -0.09, 0.78), blue))
     bpy.ops.object.text_add(location=(0, -0.13, 0.78))
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = "POLICE"; t.data.size = 0.22; t.data.extrude = 0.01; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
     t.rotation_euler = (math.radians(90), 0, 0)
     bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "txt"; t.data.materials.append(white)
@@ -675,7 +739,7 @@ def police_barricade():
         o.append(box("leg", (0.10, 0.10, 0.95), (sx * 0.92, 0, 0.48), dark))
         o.append(box("foot", (0.20, 0.50, 0.06), (sx * 0.92, 0, 0.03), dark))
     o.append(box("light", (0.18, 0.18, 0.12), (0, 0, 1.03), mat("amber", "#ffb300", emissive="#ffb300", emissive_strength=2.0)))
-    register(o, "police_barricade")
+    register(o, "police_barricade", tex="rust_metal", uv_scale=1.5)
 
 
 def road_closed_gantry():
@@ -691,11 +755,12 @@ def road_closed_gantry():
     o.append(box("frame", (TRAIN_W + 0.06, 0.06, 1.06), (0, 0.04, 2.15), white))
     bpy.ops.object.text_add(location=(0, -0.07, 2.15))
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = "ROAD\nCLOSED"; t.data.size = 0.34; t.data.extrude = 0.01; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
     t.rotation_euler = (math.radians(90), 0, 0)
     bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "txt"; t.data.materials.append(white)
     o.append(t)
-    register(o, "road_closed_gantry")
+    register(o, "road_closed_gantry", tex="rust_metal", uv_scale=1.5)
 
 
 def cones():
@@ -709,7 +774,7 @@ def cones():
         o.append(cone("cone", 0.18, 0.05, 0.75, (x, 0, 0.42), orange, verts=12))
         o.append(cyl("band", 0.14, 0.08, (x, 0, 0.45), white, verts=12))
         o.append(cyl("band2", 0.10, 0.06, (x, 0, 0.62), white, verts=12))
-    register(o, "cones")
+    register(o, "cones", tex="grime", uv_scale=1.0)
 
 
 def teargas():
@@ -726,7 +791,7 @@ def teargas():
     for i in range(9):
         r = random.uniform(0.35, 0.7)
         o.append(sphere("gas", r, (random.uniform(-0.9, 0.9), random.uniform(-0.4, 0.4), 1.85 + random.uniform(-0.2, 0.5)), gas1 if i % 2 else gas2, seg=10, rings=6))
-    register(o, "teargas")
+    register(o, "teargas", tex="grime", uv_scale=1.0, alpha=0.82, ao=False)
 
 
 def tyre_stack():
@@ -736,7 +801,7 @@ def tyre_stack():
     for i, (x, y) in enumerate(((-0.45, 0.1), (0.4, -0.1), (0.0, 0.3), (-0.1, -0.35))):
         o.append(torus("tyre", 0.32, 0.14, (x, y, 0.15), tyre, seg=16, ring=8))
     o.append(torus("tyre_top", 0.32, 0.14, (0.0, 0.0, 0.45), tyre, rot=(20, 0, 0), seg=16, ring=8))
-    register(o, "tyre_stack")
+    register(o, "tyre_stack", tex="grime", uv_scale=1.0)
 
 
 def police_van():
@@ -751,7 +816,7 @@ def police_van():
     for yy in (1.0, 4.5):
         for sx in (-1, 1):
             o.append(cyl("wheel", 0.4, 0.3, (sx * 0.9, yy, 0.4), dark, rot=(0, 90, 0), verts=14))
-    register(o, "police_van")
+    register(o, "police_van", tex="rust_metal", uv_scale=2.0)
 
 
 def flag_pole():
@@ -760,7 +825,7 @@ def flag_pole():
     steel = mat("gantry", "#6b7280")
     o = [cyl("pole", 0.06, 7.0, (0, 0, 3.5), steel, verts=8), box("flag", (0.06, 2.2, 1.4), (0, 1.1, 6.2), green), box("flag_white", (0.07, 0.55, 1.4), (0, 0.27, 6.2), white),
          sphere("moon", 0.35, (0, 1.3, 6.2), white, seg=12, rings=8, scale=(0.1, 1, 1))]
-    register(o, "flag_pole")
+    register(o, "flag_pole", tex=None)
 
 
 if __name__ == "__main__":

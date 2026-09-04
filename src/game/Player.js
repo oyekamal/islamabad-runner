@@ -16,7 +16,7 @@ export class Player {
 
     // blob shadow (long, like a bike)
     const shadowGeo = new THREE.CircleGeometry(0.6, 20);
-    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false });
     this.shadow = new THREE.Mesh(shadowGeo, shadowMat);
     this.shadow.rotation.x = -Math.PI / 2;
     this.shadow.scale.set(1, 1.7, 1);
@@ -40,6 +40,7 @@ export class Player {
   setCharacter(def, bikeDef) {
     if (this.char) this.group.remove(this.char.root);
     this.char = this.assets.character('biker');
+    this.char.root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.castShadow = true; });
     this.group.add(this.char.root);
     this.def = def;
     const palette = { ...(def && def.palette ? def.palette : {}), ...(bikeDef && bikeDef.palette ? bikeDef.palette : {}) };
@@ -242,7 +243,7 @@ export class Player {
     const h = Math.max(0, this.y - this.groundY);
     const s = Math.max(0.35, 1 - h * 0.12);
     this.shadow.scale.set(s, s * 1.7, 1);
-    this.shadow.material.opacity = 0.3 * s;
+    this.shadow.material.opacity = 0.14 * s;
   }
 
   bounds() {

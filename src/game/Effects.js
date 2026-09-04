@@ -48,6 +48,8 @@ export class Effects {
   boardBreak(x, y, z) { this.burst(x, y, z, { count: 26, color: 0x1fb2a6, speed: 7, life: 0.7, size: 0.3 }); this.burst(x, y, z, { count: 14, color: 0x7cf2ff, speed: 5, life: 0.5, size: 0.25 }); }
   jet(x, y, z) { this.burst(x, y, z, { count: 2, color: Math.random() < 0.5 ? 0xff6a00 : 0xffd53d, speed: 0.8, life: 0.22, size: 0.22, up: -2.5, vz: 0.5, gravity: 0 }); }
   powerup(x, y, z, color) { this.burst(x, y, z, { count: 24, color, speed: 5, life: 0.7, size: 0.3, gravity: 1 }); }
+  sparks(x, y, z) { this.burst(x, y, z, { count: 3, color: Math.random() < 0.5 ? 0xffd53d : 0xffffff, speed: 4, life: 0.3, size: 0.12, up: 1.2, vz: 3, gravity: 12 }); }
+  turboTrail(x, y, z) { this.burst(x, y, z, { count: 2, color: Math.random() < 0.5 ? 0xff7a1a : 0xffd53d, speed: 1.2, life: 0.35, size: 0.4, up: 0.6, vz: 4, gravity: 0 }); }
   hoverTrail(x, y, z) { this.burst(x, y, z, { count: 1, color: 0x7cf2ff, speed: 0.4, life: 0.3, size: 0.3, up: 0.3, vz: 1.5, gravity: 0 }); }
 
   update(dt) {

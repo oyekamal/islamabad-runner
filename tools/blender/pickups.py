@@ -12,10 +12,11 @@ PROPS = []
 _cx = 0.0
 
 
-def register(objs, name):
+def register(objs, name, tex="grime", uv_scale=2.0, ao=True):
     global _cx
     o = join(objs, name)
     set_origin(o, (0, 0, 0))
+    o["tex"] = tex; o["uv_scale"] = uv_scale; o["ao"] = ao; o["ao_ground"] = False
     _cx += 3.0
     o.location = (_cx, 0, 0)
     PROPS.append(o)
@@ -30,7 +31,7 @@ def coin():
          box("bar", (0.12, 0.16, 0.44), (0, 0, 0), gold),
          box("bar2", (0.12, 0.16, 0.16), (0.14, 0, 0.14), gold),
          box("bar3", (0.12, 0.16, 0.16), (0.14, 0, -0.14), gold)]
-    register(o, "coin")
+    register(o, "coin", tex=None, ao=False)
 
 
 def jetpack():
@@ -88,6 +89,7 @@ def multiplier():
     o = [cyl("disc", 0.5, 0.16, (0, 0, 0), blue, rot=(90, 0, 0), verts=24)]
     bpy.ops.object.text_add(location=(0, -0.09, 0))
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = "2X"
     t.data.size = 0.6
     t.data.extrude = 0.04
@@ -111,6 +113,7 @@ def mystery_box():
          box("ribbon2", (0.16, 0.84, 0.84), (0, 0, 0), gold)]
     bpy.ops.object.text_add(location=(0, -0.42, 0))
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = "?"
     t.data.size = 0.5
     t.data.extrude = 0.03
@@ -173,7 +176,7 @@ def msg_bubble():
          box("bar1", (0.08, 0.06, 0.16), (-0.12, -0.08, -0.02), white),
          box("bar2", (0.08, 0.06, 0.26), (0.0, -0.08, 0.03), white),
          box("bar3", (0.08, 0.06, 0.38), (0.12, -0.08, 0.09), white)]
-    register(o, "msg_bubble")
+    register(o, "msg_bubble", tex=None)
 
 
 def biryani():
@@ -194,6 +197,7 @@ def biryani():
         o.append(box("grain", (0.05, 0.05, 0.04), (random.uniform(-0.35, 0.35), random.uniform(-0.25, 0.25), 0.23), rice2))
     bpy.ops.object.text_add(location=(0, 0.36, -0.1))
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = "?"; t.data.size = 0.36; t.data.extrude = 0.02; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
     t.rotation_euler = (math.radians(90), 0, math.radians(180))
     bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "q"; t.data.materials.append(white)
@@ -207,7 +211,7 @@ def turbo_flame():
     f2 = mat("flame_y", "#ffd53d", emissive="#ffd53d", emissive_strength=3)
     o = [cone("f1", 0.22, 0.0, 0.9, (0, 0, 0), f1, rot=(90, 0, 0), verts=10),
          cone("f2", 0.12, 0.0, 0.6, (0, 0.1, 0), f2, rot=(90, 0, 0), verts=10)]
-    register(o, "turbo_flame")
+    register(o, "turbo_flame", tex=None, ao=False)
 
 if __name__ == "__main__":
     reset()

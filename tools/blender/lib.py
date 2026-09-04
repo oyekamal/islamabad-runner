@@ -155,7 +155,7 @@ def bake_vertex_colors(obj):
     mesh = obj.data
     if not mesh.materials:
         return
-    attr = mesh.color_attributes.get("Col") or mesh.color_attributes.new("Col", 'FLOAT_COLOR', 'CORNER')
+    attr = mesh.color_attributes.get("Col") or mesh.color_attributes.new("Col", 'BYTE_COLOR', 'CORNER')
     for poly in mesh.polygons:
         m = mesh.materials[poly.material_index] if poly.material_index < len(mesh.materials) else None
         c = (0.8, 0.8, 0.8, 1.0)
@@ -186,16 +186,29 @@ def bake_vertex_colors(obj):
     mesh.materials.append(vc)
 
 
-def export(filename, objects=None, animations=False, bake=False):
+def export(filename, objects=None, animations=False, bake=False, ao_characters=True):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, filename)
     bpy.ops.object.select_all(action='DESELECT')
     if objects is None:
         objects = list(bpy.context.scene.objects)
+    tex_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tex")
     for o in objects:
         o.select_set(True)
-        if bake and o.type == 'MESH':
-            bake_vertex_colors(o)
+        if o.type != 'MESH':
+            continue
+        if bake:
+            tex = o.get("tex")
+            img = texture_image(tex, os.path.join(tex_dir, tex + ".png")) if tex else None
+            finish_prop(o, img, uv_scale=float(o.get("uv_scale", 2.0)), ao=bool(o.get("ao", True)),
+                        ao_samples=int(o.get("ao_samples", 20)), alpha=o.get("alpha"), ground=bool(o.get("ao_ground", True)))
+        elif ao_characters:
+            # keep the palette materials, add AO in a white colour attribute
+            attr = o.data.color_attributes.get("Col") or o.data.color_attributes.new("Col", 'BYTE_COLOR', 'CORNER')
+            for i in range(len(attr.data)):
+                attr.data[i].color = (1, 1, 1, 1)
+            o.data.color_attributes.active_color = attr
+            bake_ao(o, samples=20, ground=True, strength=0.7)
     kwargs = dict(
         filepath=path,
         export_format='GLB',
@@ -204,8 +217,15 @@ def export(filename, objects=None, animations=False, bake=False):
         export_yup=True,
         export_animations=animations,
         export_materials='EXPORT',
-        export_image_format='NONE',
-        export_texcoords=False,
+        export_image_format='JPEG',
+        export_jpeg_quality=82,
+        export_draco_mesh_compression_enable=True,
+        export_draco_mesh_compression_level=6,
+        export_draco_position_quantization=12,
+        export_draco_normal_quantization=8,
+        export_draco_texcoord_quantization=10,
+        export_draco_color_quantization=8,
+        export_texcoords=True,
         export_vertex_color='ACTIVE',
         export_normals=True,
         export_tangents=False,
@@ -367,3 +387,177 @@ def action_fcurves(act):
             for cb in strip.channelbags:
                 out.extend(cb.fcurves)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Quality pass: ambient occlusion baking + procedural textures
+# ---------------------------------------------------------------------------
+import random as _random
+from mathutils.bvhtree import BVHTree
+
+
+def _hemisphere_dirs(n, seed=1):
+    rng = _random.Random(seed)
+    out = []
+    for _ in range(n):
+        # cosine-weighted hemisphere around +Z
+        u, v = rng.random(), rng.random()
+        r = math.sqrt(u)
+        th = 2 * math.pi * v
+        out.append(Vector((r * math.cos(th), r * math.sin(th), math.sqrt(max(0.0, 1 - u)))))
+    return out
+
+
+def bake_ao(obj, samples=24, max_dist=2.5, strength=0.85, ground=True, extra_objs=()):
+    """Per-corner ambient occlusion baked into the 'Col' colour attribute (multiplied in).
+    Uses a BVH over the object itself (+ optional other objects and a ground plane)."""
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    trees = [BVHTree.FromObject(obj, depsgraph)]
+    for e in extra_objs:
+        trees.append(BVHTree.FromObject(e, depsgraph))
+    dirs = _hemisphere_dirs(samples)
+    attr = mesh.color_attributes.get("Col")
+    if attr is None:
+        attr = mesh.color_attributes.new("Col", 'BYTE_COLOR', 'CORNER')
+        for i in range(len(attr.data)):
+            attr.data[i].color = (1, 1, 1, 1)
+    # smooth-ish: evaluate AO per vertex using the vertex normal, then write per corner
+    ao_v = [1.0] * len(mesh.vertices)
+    for v in mesh.vertices:
+        n = v.normal.copy()
+        if n.length < 1e-6:
+            n = Vector((0, 0, 1))
+        # build a basis around the normal
+        up = Vector((0, 0, 1)) if abs(n.z) < 0.9 else Vector((1, 0, 0))
+        t = n.cross(up).normalized()
+        b = n.cross(t)
+        origin = v.co + n * 0.02
+        hits = 0
+        for d in dirs:
+            w = t * d.x + b * d.y + n * d.z
+            blocked = False
+            for tree in trees:
+                hit = tree.ray_cast(origin, w, max_dist)
+                if hit[0] is not None:
+                    blocked = True
+                    break
+            if not blocked and ground and w.z < 0 and origin.z > 0:
+                # virtual ground plane at z=0
+                tz = -origin.z / w.z
+                if tz < max_dist:
+                    blocked = True
+            if blocked:
+                hits += 1
+        occ = hits / len(dirs)
+        ao_v[v.index] = 1.0 - strength * occ
+    for poly in mesh.polygons:
+        for li in poly.loop_indices:
+            vi = mesh.loops[li].vertex_index
+            c = attr.data[li].color
+            a = ao_v[vi]
+            attr.data[li].color = (c[0] * a, c[1] * a, c[2] * a, 1.0)
+
+
+def box_uv(obj, scale=1.0):
+    """World-space box projection UVs (per-face dominant axis)."""
+    mesh = obj.data
+    uv = mesh.uv_layers.get("UVMap") or mesh.uv_layers.new(name="UVMap")
+    mw = obj.matrix_world
+    for poly in mesh.polygons:
+        n = (mw.to_3x3() @ poly.normal)
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for li in poly.loop_indices:
+            p = mw @ mesh.vertices[mesh.loops[li].vertex_index].co
+            if az >= ax and az >= ay:
+                u, v = p.x, p.y
+            elif ax >= ay:
+                u, v = p.y, p.z
+            else:
+                u, v = p.x, p.z
+            uv.data[li].uv = (u / scale, v / scale)
+
+
+_textures = {}
+
+
+def texture_image(name, path):
+    if name in _textures:
+        return _textures[name]
+    img = bpy.data.images.load(path)
+    img.name = name
+    _textures[name] = img
+    return img
+
+
+def vertex_color_material(tex_img=None, key="__vc__", alpha=None):
+    """Material = vertex colour (x texture). Shared per texture so props stay at 1 draw call."""
+    k = key + (tex_img.name if tex_img else "") + (f"a{alpha}" if alpha else "")
+    m = _materials.get(k)
+    if m:
+        return m
+    m = bpy.data.materials.new("vc_" + (tex_img.name if tex_img else "plain"))
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    bsdf.inputs["Roughness"].default_value = 0.9
+    vc = nt.nodes.new("ShaderNodeVertexColor")
+    vc.layer_name = "Col"
+    if tex_img is not None:
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        tex.image = tex_img
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = 'RGBA'
+        mix.blend_type = 'MULTIPLY'
+        mix.inputs["Factor"].default_value = 1.0
+        nt.links.new(vc.outputs["Color"], mix.inputs[6])
+        nt.links.new(tex.outputs["Color"], mix.inputs[7])
+        nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
+    else:
+        nt.links.new(vc.outputs["Color"], bsdf.inputs["Base Color"])
+    if alpha is not None:
+        bsdf.inputs["Alpha"].default_value = alpha
+        m.blend_method = 'BLEND'
+    _materials[k] = m
+    return m
+
+
+def finish_prop(obj, tex_img=None, uv_scale=1.0, ao=True, ao_samples=24, alpha=None, ground=True):
+    """Bake colours -> vertex colours, add AO, box UVs and a shared textured material."""
+    bake_vertex_colors(obj)
+    if ao:
+        bake_ao(obj, samples=ao_samples, ground=ground)
+    if tex_img is not None:
+        box_uv(obj, uv_scale)
+    obj.data.materials.clear()
+    obj.data.materials.append(vertex_color_material(tex_img, alpha=alpha))
+
+
+def blob(name, radius, loc, material, jitter=0.18, subdiv=2, seed=0, scale=None):
+    """Low-poly foliage blob: icosphere with randomly displaced vertices (faceted look)."""
+    rng = _random.Random(seed)
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=radius, location=loc)
+    o = bpy.context.active_object
+    for v in o.data.vertices:
+        v.co *= 1.0 + rng.uniform(-jitter, jitter)
+    if scale:
+        o.scale = Vector(scale)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return _finish(o, name, material)
+
+
+def text_mesh(body, size, loc, material, rot=(90, 0, 0), extrude=0.02):
+    bpy.ops.object.text_add(location=loc)
+    t = bpy.context.active_object
+    t.data.resolution_u = 3
+    t.data.body = body
+    t.data.size = size
+    t.data.extrude = extrude
+    t.data.align_x = 'CENTER'
+    t.data.align_y = 'CENTER'
+    t.rotation_euler = [math.radians(a) for a in rot]
+    bpy.ops.object.convert(target='MESH')
+    t = bpy.context.active_object
+    t.data.materials.append(material)
+    return t

@@ -50,6 +50,7 @@ export class Track {
     this.genZ = 0;
     this.blockIndex = Math.floor(startDistance / BLOCK_L);
     this.prevPlans = { '-1': 'free', 0: 'free', 1: 'free' };
+    this.prevPlans2 = { '-1': 'free', 0: 'free', 1: 'free' };
     this.prevTrainEnd = { '-1': null, 0: null, 1: null };
     this.sincePickup = 0;
     this.sinceLetter = 0;
@@ -103,6 +104,7 @@ export class Track {
     let r = this.rangerFree.pop();
     if (!r) {
       r = this.assets.character('ranger');
+      r.root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.castShadow = true; });
       this.scene.add(r.root);
     }
     r.mixer.stopAllAction();
@@ -138,6 +140,10 @@ export class Track {
       const dz = m.speed * dt;
       m.zNear += dz; m.zFar += dz;
       for (const mesh of m.meshes) mesh.position.z += dz;
+      for (const o of this.obstacles) {
+        if (o === m || o.moving || o.lane !== m.lane || (o.kind !== 'train' && o.kind !== 'ramp' && o.kind !== 'solid')) continue;
+        if (m.zNear > o.zFar - 1 && m.zFar < o.zNear + 1) { m.dead = true; break; }
+      }
       m.lampT = (m.lampT || 0) + dt;
       if (m.lamp) m.lamp.visible = Math.floor(m.lampT * 6) % 2 === 0;
     }
@@ -156,7 +162,7 @@ export class Track {
     this.obstacles = keepO;
     const keepM = [];
     for (const m of this.movers) {
-      if (m.zFar > cullZ + 40) { this._releaseObstacle(m); this.obstacles = this.obstacles.filter((x) => x !== m); }
+      if (m.zFar > cullZ + 40 || m.dead) { this._releaseObstacle(m); this.obstacles = this.obstacles.filter((x) => x !== m); }
       else keepM.push(m);
     }
     this.movers = keepM;
@@ -194,13 +200,14 @@ export class Track {
         if (lane === freeLane) { plans[lane] = chance((sprint ? 0.3 : 0.55) + d * 0.3) ? 'barriers' : 'free'; continue; }
         const r = Math.random();
         const prevTrain = this.prevPlans[lane] === 'train';
+        const recentTrain = prevTrain || this.prevPlans2[lane] === 'train';
         if (sprint) {
-          plans[lane] = r < 0.35 ? 'barriers' : r < 0.5 ? 'stumble' : r < 0.6 ? 'moving' : 'free';
+          plans[lane] = r < 0.35 ? 'barriers' : r < 0.5 ? 'stumble' : (r < 0.6 && !recentTrain) ? 'moving' : 'free';
         } else if (prevTrain && r < 0.55) plans[lane] = 'train';
         else if (r < 0.30 + d * 0.15) plans[lane] = 'train';
         else if (r < 0.48 + d * 0.15) plans[lane] = 'barriers';
         else if (r < 0.58 + d * 0.1 && lane === 0 && !tunnel) plans[lane] = 'pillar';
-        else if (r < 0.70 + d * 0.12 && !prevTrain) plans[lane] = 'moving';
+        else if (r < 0.70 + d * 0.12 && !recentTrain) plans[lane] = 'moving';
         else if (r < 0.82) plans[lane] = 'stumble';
         else plans[lane] = 'free';
       }
@@ -222,6 +229,7 @@ export class Track {
         case 'stumble': this._planStumble(lane, zNear, zFar, d, zone.id); break;
       }
     }
+    this.prevPlans2 = this.prevPlans;
     this.prevPlans = plans;
     if (!safe) this._pickupsForBlock(plans, zNear, zFar);
 
@@ -236,7 +244,8 @@ export class Track {
   }
 
   _planBarriers(lane, zNear, zFar, d, zoneId) {
-    let z = zNear - rnd(8, 16);
+    const afterTrain = this.prevPlans[lane] === 'train';
+    let z = zNear - (afterTrain ? rnd(24, 30) : rnd(8, 16));
     const minGap = 14 - d * 4;
     while (z > zFar + 6) {
       const r = Math.random();
@@ -307,7 +316,7 @@ export class Track {
 
   _planMoving(lane, zNear, zFar, d) {
     const count = chance(0.6) ? 1 : 2;
-    this.pendingMovers.push({ lane, count, spawnZ: zFar - 10, triggerZ: zNear + 110, speed: rnd(10, 14) + d * 5 });
+    this.pendingMovers.push({ lane, count, spawnZ: zFar - 3, triggerZ: zNear + 110, speed: rnd(10, 14) + d * 5 });
     if (chance(0.5)) this._coinLine(lane, zNear - rnd(4, 10), 6);
   }
 
@@ -328,7 +337,7 @@ export class Track {
 
   _planStumble(lane, zNear, zFar, d, zoneId) {
     const n = 1 + (chance(0.5) ? 1 : 0);
-    let z = zNear - rnd(10, 20);
+    let z = zNear - (this.prevPlans[lane] === 'train' ? rnd(24, 30) : rnd(10, 20));
     for (let i = 0; i < n && z > zFar + 6; i++) {
       const r = Math.random();
       if (r < 0.4) {

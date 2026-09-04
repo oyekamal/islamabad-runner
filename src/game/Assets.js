@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const FILES = ['biker', 'ranger', 'props', 'pickups', 'scenery'];
@@ -15,9 +16,11 @@ function simplifyMaterials(root) {
       const ck = m.uuid + (o.geometry.attributes.color ? ':vc' : '');
       if (cache.has(ck)) return cache.get(ck);
       const hasVC = !!o.geometry.attributes.color;
+      const baked = (m.name || '').startsWith('vc_');   // colour lives in the vertex colours
       const lm = new THREE.MeshLambertMaterial({
         vertexColors: hasVC,
-        color: hasVC ? new THREE.Color(0xffffff) : (m.color ? m.color.clone() : new THREE.Color(0xffffff)),
+        color: baked ? new THREE.Color(0xffffff) : (m.color ? m.color.clone() : new THREE.Color(0xffffff)),
+        map: m.map || null,
         emissive: m.emissive ? m.emissive.clone().multiplyScalar(Math.min(1, m.emissiveIntensity || 1) * 0.6) : new THREE.Color(0),
         transparent: m.transparent,
         opacity: m.opacity,
@@ -39,6 +42,15 @@ export class Assets {
 
   async load(onProgress) {
     const loader = new GLTFLoader();
+    const draco = new DRACOLoader();
+    if (window.__DRACO_JS) {
+      // single-file build: the JS decoder is inlined, hand it to the loader directly
+      draco.setDecoderConfig({ type: 'js' });
+      draco._loadLibrary = () => Promise.resolve(window.__DRACO_JS);
+    } else {
+      draco.setDecoderPath((window.__DRACO_PATH) || './draco/');
+    }
+    loader.setDRACOLoader(draco);
     let done = 0;
     await Promise.all(FILES.map((f) => new Promise((res, rej) => {
       loader.load((window.__MODEL_URLS && window.__MODEL_URLS[f]) || `models/${f}.glb`, (g) => {
