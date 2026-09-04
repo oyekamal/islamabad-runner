@@ -64,10 +64,42 @@ python3 game.py
 
 ## Assets
 
-Sprites, backgrounds, and HUD art are procedurally generated (no external art
-assets) via `generate_assets.py` and `generate_sprites_pil.py`, written into
-`assets/sprites` and `assets/sprites_pil`. Preview frames from a test run are in
-the repo root (`preview_frame*.png`, `preview_win.png`).
+Two asset pipelines exist, both procedural (no hand-drawn or purchased art):
+
+**`generate_sprites_pil.py`** — the one `game.py` actually loads (`assets/sprites_pil`).
+Draws every sprite with Pillow as flat-color shapes with a 3px black outline, on a
+shared palette (PTI blue for containers, khaki for the ranger, olive for the jeep,
+teargas green-yellow, biryani brown/saffron). This is what's on screen in-game:
+
+| Sprite | Design |
+|---|---|
+| **Biker (player)** | Side-view motorcycle (2 wheels, tank, exhaust) + rider in a khaki jacket with a brown backpack, dark helmet, tinted visor. 3-frame spritesheet (neutral / lean-forward / lean-back) for the ride animation. |
+| **Ranger** | Khaki uniform, dark green beret, sunglasses, black boots, belt — 2-frame walk cycle (legs/arms alternate). |
+| **Container stack** | Two PTI-blue shipping containers stacked, corrugated ribs, chrome door handles. |
+| **Army jeep** | Olive-drab body, dark cab top, tinted windshield, a small star insignia on the hood. |
+| **Teargas canister** | Grey cylinder with a red warning band, white label stripe, and a yellow-green gas puff that shifts position across 3 frames to fake rotation as it rolls. |
+| **Traffic cone** | Orange with a white reflective stripe, black outline. |
+| **WhatsApp icon** (collectible) | Green phone silhouette with white WiFi-style signal arcs and a glow halo — turbo fuel. |
+| **Biryani box** (collectible) | Brown takeaway box, lid ajar showing rice + saffron strands, steam puffs rising — the healing item. |
+| **HUD bar** | Dark asphalt panel, 3 round "headlight" HP indicators, a turbo meter bar, distance counter. |
+
+**`generate_assets.py`** — an earlier/alternate pass that calls Pollinations.ai
+(free text-to-image, `flux` model) for a more painterly sprite set plus the
+**background art**, one per zone, all real Islamabad geography reskinned for the
+runner:
+
+| Background | Setting |
+|---|---|
+| `bg_boulevard` | Faisal Avenue — wide boulevard, smoggy grey sky, palm trees (Zone 1) |
+| `bg_chokepoint` | A street sealed with stacked blue containers, yellow teargas haze in the air (Zone 2) |
+| `bg_redzone` | Constitution Avenue — government building domes / parliament in the distance, heavy smog, dramatic sky (Zone 3) |
+| `bg_finish` | D-Chowk — the parliament gate and open plaza, the finish line (Zone 4) |
+
+There's also an unused `ui/logo` prompt (motorcycle-runner title art, blue/yellow-green,
+smoggy backdrop) generated but not yet wired into `game.py`, which currently draws
+its zone backgrounds as flat colors + simple shapes rather than these AI images.
+
+Preview frames from a test run are in the repo root (`preview_frame*.png`, `preview_win.png`).
 
 ## Status
 
