@@ -102,7 +102,7 @@ def feature_graphic():
         d.text((60 + dx, 195 + dy), 'RUNNER', font=f, fill=BLUE)
     d.text((60, 110), 'ISLAMABAD', font=f, fill=YELLOW)
     d.text((60, 195), 'RUNNER', font=f, fill=YELLOW)
-    d.text((62, 300), 'Dash through the capital. Dodge the Metro.', font=f2, fill=(255, 255, 255))
+    d.text((62, 300), 'Dodge the containers. Outrun the rangers.', font=f2, fill=(255, 255, 255))
     return bg
 
 

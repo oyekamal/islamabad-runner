@@ -146,7 +146,8 @@ export class Game {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     // wider screens see less vertical => keep the runner nicely framed
-    this.camera.fov = w > h ? 50 : 60;
+    this.baseFov = w > h ? 50 : 60;
+    this.camera.fov = this.baseFov;
     this.camera.updateProjectionMatrix();
   }
 
@@ -667,9 +668,9 @@ export class Game {
     } else if (this.state === 'dying' || this.state === 'dead') {
       // swing to the side so we see the runner get caught
       const side = p.lane <= 0 ? 1 : -1;
-      const target = new THREE.Vector3(Math.max(-4, Math.min(4, p.x + side * 3.4)), p.y + 2.3, p.z + 3.2);
+      const target = new THREE.Vector3(Math.max(-4.2, Math.min(4.2, p.x + side * 2.8)), p.y + 3.4, p.z + 4.6);
       cam.position.lerp(target, Math.min(1, dt * 2.5));
-      cam.lookAt(p.x, p.y + 1.0, p.z - 0.5);
+      cam.lookAt(p.x, p.y + 0.9, p.z - 0.5);
     } else {
       const yFollow = p.flying ? p.y - 0.6 : Math.min(p.y, p.groundY + 0.6) * 0.9;
       this._camY = this._camY === undefined ? yFollow : this._camY + (yFollow - this._camY) * Math.min(1, dt * 5);
@@ -683,6 +684,9 @@ export class Game {
       }
       cam.lookAt(p.x * 0.5, this._camY + 1.05, p.z - 9);
     }
+    // widen the lens a little when going fast (turbo / jetpack / headstart)
+    const wantFov = (this.baseFov || 60) + ((this.state === 'running' && (p.hover || p.flying || this.speed > 40)) ? 7 : 0);
+    if (Math.abs(cam.fov - wantFov) > 0.05) { cam.fov += (wantFov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
     this.sky.position.set(cam.position.x, 0, p.z);
     this.ground.position.z = p.z - 200;
     this.skyline.position.z = p.z;

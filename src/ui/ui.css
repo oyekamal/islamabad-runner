@@ -164,3 +164,8 @@ button { font-family: var(--font); cursor: pointer; }
 @keyframes bannerIn { 0% { opacity: 0; transform: translateX(60%); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(-40%); } }
 #hud .hover-btn .charge { font-size: 10px; letter-spacing: 1px; color: #7cf2ff; line-height: 1; }
 #hud .letters { top: calc(112px + var(--safe-top)); }
+
+/* speed effect while Turbo / jetpack / headstart is active */
+.speed-fx { position: absolute; inset: -20%; pointer-events: none; background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,255,255,0) 0deg 9deg, rgba(255,255,255,.22) 9deg 10.5deg); mask-image: radial-gradient(ellipse at 50% 45%, transparent 38%, #000 75%); -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 38%, #000 75%); animation: spin 1.2s linear infinite; opacity: 0; transition: opacity .3s; }
+.speed-fx.on { opacity: 1; }
+@keyframes spin { to { transform: rotate(12deg); } }

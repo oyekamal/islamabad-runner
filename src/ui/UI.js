@@ -147,6 +147,7 @@ export class UI {
       <div class="dist"><span class="n">0</span> m</div>
       <div class="zone"></div>
       <div class="toasts"></div>
+      <div class="speed-fx"></div>
     </div>`);
     this.hud.querySelector('.pause').addEventListener('click', () => this.game.pause());
     this.hud.querySelector('.hover-btn').addEventListener('pointerdown', (e) => { e.stopPropagation(); this.game.useHoverboard(); this._refreshHoverCount(); });
@@ -195,6 +196,9 @@ export class UI {
     if (!this.hud) return;
     if (d.score !== this._lastScore) { this.hud.querySelector('.score').textContent = fmt(d.score); this._lastScore = d.score; }
     if (d.coins !== this._lastCoins) { this.hud.querySelector('.coins .n').textContent = fmt(d.coins); this._lastCoins = d.coins; }
+    const fx = this.hud.querySelector('.speed-fx');
+    const fast = d.hover > 0 || (d.powerups.jetpack || 0) > 0 || d.speed > 40;
+    if (fast !== this._lastFast) { fx.classList.toggle('on', fast); this._lastFast = fast; }
     const dist = Math.floor(d.distance);
     if (dist !== this._lastDist) { this.hud.querySelector('.dist .n').textContent = fmt(dist); this._lastDist = dist; }
     if (d.multiplier !== this._lastMult) { const m = this.hud.querySelector('.mult'); m.textContent = 'x' + d.multiplier; m.classList.toggle('x2', d.powerups.multiplier > 0); this._lastMult = d.multiplier; }
