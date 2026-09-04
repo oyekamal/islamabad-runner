@@ -15,10 +15,11 @@ _cx = 0.0
 random.seed(7)
 
 
-def register(objs, name):
+def register(objs, name, tex="grime", uv_scale=2.0, ao=True):
     global _cx
     o = join(objs, name)
     set_origin(o, (0, 0, 0))
+    o["tex"] = tex; o["uv_scale"] = uv_scale; o["ao"] = ao
     _cx += 40.0
     o.location = (_cx, 0, 0)
     PROPS.append(o)
@@ -28,6 +29,7 @@ def register(objs, name):
 def text_mesh(body, size, loc, material, rot=(90, 0, 0), extrude=0.03):
     bpy.ops.object.text_add(location=loc)
     t = bpy.context.active_object
+    t.data.resolution_u = 3
     t.data.body = body
     t.data.size = size
     t.data.extrude = extrude
@@ -68,7 +70,7 @@ def faisal_mosque():
             o.append(cone("min_top", 1.1, 0.0, 4, (x, y, 1.5 + 42), gold, verts=8))
     o.append(cyl("crescent_pole", 0.2, 3, (0, W / 2 + 5, 1.5 + 22 + 1.5), gold, verts=8))
     o.append(torus("crescent", 1.4, 0.25, (0, W / 2 + 5, 1.5 + 22 + 4.2), gold, rot=(90, 0, 0)))
-    register(o, "faisal_mosque")
+    register(o, "faisal_mosque", tex="plaster", uv_scale=8.0, ao=False)
 
 
 def centaurus():
@@ -84,7 +86,7 @@ def centaurus():
         for k in range(int(h / 3)):
             o.append(box("floor_line", (8.2, 8.2, 0.25), (x, 11, 8 + 1.5 + k * 3), frame))
         o.append(box("crown", (8.6, 8.6, 1.2), (x, 11, 8 + h + 0.6), frame))
-    register(o, "centaurus")
+    register(o, "centaurus", tex="plaster", uv_scale=8.0, ao=False)
 
 
 def pakistan_monument():
@@ -106,7 +108,7 @@ def pakistan_monument():
         p.name = "petal"; p.data.materials.append(granite)
         o.append(p)
     o.append(cyl("star_col", 1.2, 6, (0, 12, 4.5), grey, verts=10))
-    register(o, "pakistan_monument")
+    register(o, "pakistan_monument", tex="plaster", uv_scale=6.0, ao=False)
 
 
 def margalla_hills():
@@ -122,10 +124,11 @@ def margalla_hills():
         r = random.uniform(16, 28)
         m = (g1, g2, g3)[i % 3]
         o.append(cone("hill", r, 0.0, h, (x, 20 + random.uniform(-8, 8), h / 2), m, verts=7))
-    register(o, "margalla_hills")
+    register(o, "margalla_hills", tex="foliage", uv_scale=12.0, ao=False)
 
 
 def building(idx, w, d, h, floors, col, trim, balcony=True):
+    import random
     o = []
     o.append(box("body", (w, d, h), (0, d / 2, h / 2), col, bevel=0.1))
     o.append(box("roofcap", (w + 0.3, d + 0.3, 0.3), (0, d / 2, h + 0.1), trim))
@@ -133,14 +136,32 @@ def building(idx, w, d, h, floors, col, trim, balcony=True):
     glass = mat("bl_glass", "#3d6f9e", rough=0.2)
     fh = h / floors
     nwin = max(2, int(w / 2.2))
+    frame = mat("win_frame", "#f7f3ea")
+    ac = mat("ac_unit", "#d8d8d8")
+    rng = random.Random(idx * 7 + 3)
     for f in range(floors):
         z = fh * f + fh * 0.55
         for k in range(nwin):
             x = -w / 2 + (k + 0.5) * (w / nwin)
-            o.append(box("win", (w / nwin * 0.55, 0.05, fh * 0.45), (x, -0.02, z), glass))
+            o.append(box("win_frame", (w / nwin * 0.62, 0.06, fh * 0.52), (x, -0.03, z), frame))
+            o.append(box("win", (w / nwin * 0.55, 0.05, fh * 0.45), (x, -0.06, z), glass))
+            if rng.random() < 0.3:
+                o.append(box("ac", (0.6, 0.5, 0.5), (x + w / nwin * 0.2, -0.3, z - fh * 0.3), ac, bevel=0.03))
         if balcony and f > 0:
             o.append(box("balcony", (w * 0.96, 0.6, 0.12), (0, -0.3, fh * f + 0.06), trim))
             o.append(box("railing", (w * 0.96, 0.05, 0.6), (0, -0.6, fh * f + 0.4), trim))
+            for k in range(int(w / 0.5)):
+                o.append(box("bar", (0.04, 0.04, 0.6), (-w * 0.48 + k * 0.5, -0.6, fh * f + 0.4), trim))
+    # ground floor: shop fronts with awnings and a signboard
+    shop_cols = [("#e0382b", "#ffffff"), ("#1f6b3a", "#ffcc33"), ("#2c7be5", "#ffffff"), ("#f5c400", "#1a1a1a")]
+    names = ["CHAI KHANA", "MOBILE ZONE", "ISB BAKERS", "AL-KARAM", "NAAN SHOP", "DR. ASIF CLINIC", "KHAN TRAVELS", "DATA CABLE"]
+    sc = shop_cols[idx % len(shop_cols)]
+    sign_bg = mat(f"sign_bg_{idx}", sc[0]); sign_fg = mat(f"sign_fg_{idx}", sc[1], emissive=sc[1], emissive_strength=0.3)
+    o.append(box("signboard", (w * 0.9, 0.12, 0.7), (0, -0.08, fh * 0.92), sign_bg))
+    o.append(text_mesh(names[idx % len(names)], 0.4, (0, -0.16, fh * 0.92), sign_fg, extrude=0.01))
+    for k in range(6):
+        o.append(box("awning", (w * 0.9 / 6, 0.9, 0.05), (-w * 0.45 + (k + 0.5) * (w * 0.9 / 6), -0.5, fh * 0.55), sign_bg if k % 2 else mat("awning_white", "#f7f7f7"), rot=(-20, 0, 0)))
+    o.append(box("dish", (0.8, 0.1, 0.8), (-w * 0.3, d * 0.5, h + 0.9), mat("dish", "#e8e8e8"), rot=(0, 30, 0)))
     return o
 
 
@@ -153,33 +174,47 @@ def buildings():
         w = random.choice((8, 10, 12))
         floors = random.choice((3, 4, 5, 6))
         h = floors * 3.2
-        register(building(i, w, 9, h, floors, col, trim), f"building_{i}")
+        register(building(i, w, 9, h, floors, col, trim), f"building_{i}", tex="plaster", uv_scale=3.0)
 
 
 def tree():
     trunk = mat("trunk", "#6b4a2b")
     leaf1 = mat("leaf1", "#3f9b3f")
     leaf2 = mat("leaf2", "#2f7d34")
-    o = [cyl("trunk", 0.22, 2.4, (0, 0, 1.2), trunk, verts=8),
-         sphere("l1", 1.5, (0, 0, 3.2), leaf1, seg=10, rings=6),
-         sphere("l2", 1.1, (0.8, 0.3, 3.9), leaf2, seg=10, rings=6),
-         sphere("l3", 1.0, (-0.7, -0.4, 3.8), leaf2, seg=10, rings=6)]
-    register(o, "tree")
+    leaf3 = mat("leaf3", "#5ab54a")
+    o = [cyl("trunk", 0.24, 2.4, (0, 0, 1.2), trunk, verts=8, r2=0.16),
+         beam("branch_l", (0, 0, 2.0), (0.7, 0.2, 3.0), 0.10, trunk),
+         beam("branch_r", (0, 0, 2.2), (-0.6, -0.3, 3.1), 0.09, trunk),
+         blob("l1", 1.5, (0, 0, 3.3), leaf1, seed=1, subdiv=2),
+         blob("l2", 1.1, (0.85, 0.3, 3.9), leaf2, seed=2, subdiv=1),
+         blob("l3", 1.0, (-0.75, -0.4, 3.8), leaf2, seed=3, subdiv=1),
+         blob("l4", 0.8, (0.1, 0.6, 4.5), leaf3, seed=4, subdiv=1),
+         blob("l5", 0.7, (-0.3, -0.8, 2.9), leaf3, seed=5, subdiv=1)]
+    register(o, "tree", tex="foliage", uv_scale=1.6)
 
 
 def palm():
     trunk = mat("palm_trunk", "#8b6b47")
+    trunk_d = mat("palm_trunk_dark", "#6b4f33")
     leaf = mat("palm_leaf", "#2f9e44")
-    o = [cyl("trunk", 0.18, 5.0, (0, 0, 2.5), trunk, verts=8, r2=0.12)]
-    for a in range(0, 360, 60):
+    leaf2 = mat("palm_leaf2", "#3fbf58")
+    o = [cyl("trunk", 0.20, 5.0, (0.05, 0, 2.5), trunk, verts=8, r2=0.13)]
+    for k in range(7):   # trunk rings
+        o.append(cyl("ring", 0.21 - k * 0.01, 0.12, (0.05, 0, 0.5 + k * 0.65), trunk_d, verts=8))
+    o.append(sphere("crown", 0.3, (0.05, 0, 5.05), trunk_d, seg=8, rings=6))
+    for i, a in enumerate(range(0, 360, 45)):
         r = math.radians(a)
-        o.append(box("frond", (0.35, 2.4, 0.08), (math.cos(r) * 1.1, math.sin(r) * 1.1, 5.1), leaf, rot=(0, 0, a + 90)))
-        o[-1].data.transform(Euler((0, 0, 0), 'XYZ').to_matrix().to_4x4())
-    for i, ob in enumerate(o[1:]):
-        # droop fronds
-        a = math.radians(i * 60)
-        ob.data.transform(Euler((math.sin(a) * math.radians(25), -math.cos(a) * math.radians(25), 0), 'XYZ').to_matrix().to_4x4())
-    register(o, "palm")
+        d = Vector((math.cos(r), math.sin(r), 0))
+        p0 = Vector((0.05, 0, 5.1))
+        p1 = p0 + d * 1.3 + Vector((0, 0, 0.45))
+        p2 = p1 + d * 1.4 + Vector((0, 0, -0.9))
+        m = leaf if i % 2 else leaf2
+        o.append(beam(f"frond_a_{a}", p0, p1, 0.34, m, thick2=0.06))
+        o.append(beam(f"frond_b_{a}", p1, p2, 0.30, m, thick2=0.05))
+    for k in range(3):   # coconuts
+        rr = math.radians(k * 120)
+        o.append(sphere("coco", 0.14, (0.05 + math.cos(rr) * 0.3, math.sin(rr) * 0.3, 4.85), mat("coconut", "#6b4a2b"), seg=8, rings=6))
+    register(o, "palm", tex="foliage", uv_scale=1.6)
 
 
 def billboard(idx, text, bg, fg):
@@ -190,7 +225,7 @@ def billboard(idx, text, bg, fg):
          box("panel", (8, 0.3, 3.2), (0, 0.3, 7.4), bgm, bevel=0.05),
          box("frame", (8.3, 0.2, 3.5), (0, 0.42, 7.4), steel)]
     o.append(text_mesh(text, 1.1, (0, 0.12, 7.4), fgm))
-    register(o, f"billboard_{idx}")
+    register(o, f"billboard_{idx}", tex="rust_metal", uv_scale=3.0)
 
 
 def metro_station():
@@ -207,7 +242,7 @@ def metro_station():
         o.append(cyl("post", 0.12, 3.8, (1.6, y, 2.1), steel, verts=8))
     o.append(box("sign", (0.2, 5, 0.9), (-1.9, 7, 3.4), white))
     o.append(text_mesh("METRO BUS", 0.5, (-2.02, 7, 3.4), red, rot=(90, 0, -90)))
-    register(o, "metro_station")
+    register(o, "metro_station", tex="rust_metal", uv_scale=3.0)
 
 
 def container_yard():
@@ -217,7 +252,7 @@ def container_yard():
     for i in range(4):
         for j in range(random.choice((1, 2, 3))):
             o.append(box("cont", (2.4, 6.0, 2.4), (-4 + i * 2.7, 3.0 + random.uniform(-0.3, 0.3), 1.2 + j * 2.4), random.choice(cols), bevel=0.03))
-    register(o, "container_yard")
+    register(o, "container_yard", tex="rust_metal", uv_scale=3.0)
 
 
 def overpass_sign():
@@ -230,7 +265,7 @@ def overpass_sign():
          cyl("post_r", 0.18, 6.4, (5.8, 0, 3.2), steel, verts=8),
          box("panel", (7, 0.2, 1.8), (0, -0.05, 7.2), green, bevel=0.05)]
     o.append(text_mesh("D-CHOWK  →", 0.8, (0, -0.2, 7.2), white))
-    register(o, "overpass_sign")
+    register(o, "overpass_sign", tex="rust_metal", uv_scale=3.0)
 
 
 if __name__ == "__main__":

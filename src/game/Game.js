@@ -28,6 +28,8 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !lowEnd, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowEnd ? 1.5 : 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = lowEnd ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.NoToneMapping;
 
     this.scene = new THREE.Scene();
@@ -40,6 +42,7 @@ export class Game {
 
     this.player = new Player(assets, this.scene, this.characterDef(), this.bikeDef());
     this.chaser = new Chaser(assets, this.scene);
+    for (const root of [this.player.group, this.chaser.group]) root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.castShadow = true; });
     this.track = new Track(assets, this.scene, this);
     this.fx = new Effects(this.scene);
     this._buildSkyline();
@@ -103,6 +106,7 @@ export class Game {
     this.scene.add(this.clouds);
     // endless ground plane under everything (dry Islamabad grass / earth)
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 900), new THREE.MeshLambertMaterial({ color: 0x9db06a }));
+    ground.receiveShadow = true;
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.08;
     this.ground = ground;
@@ -113,7 +117,14 @@ export class Game {
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8fa3b8, 1.25));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.9);
     sun.position.set(-6, 14, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    const sc = sun.shadow.camera;
+    sc.left = -7; sc.right = 7; sc.top = 9; sc.bottom = -9; sc.near = 2; sc.far = 40;
+    sun.shadow.bias = -0.0015;
+    sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
+    this.scene.add(sun.target);
     this.sun = sun;
     const fill = new THREE.DirectionalLight(0xc9e6ff, 0.5);
     fill.position.set(8, 6, -10);
@@ -509,7 +520,7 @@ export class Game {
     const targetSpeed = Math.min(SPEED.max, SPEED.start + this.distance * SPEED.perMetre);
     let speed = targetSpeed;
     if (this.headstart > 0) { speed = SPEED.headstart; this.headstart -= dt; if (this.headstart <= 0 && !(this.powerups.jetpack > 0)) p.setFlying(false); }
-    if (this.bikeDef().bonus === 'speed' && p.hover) speed *= 1.1;
+    if (p.hover) speed *= (this.bikeDef().bonus === 'speed' ? 1.5 : 1.35);
     this.speed = speed;
     this.audio.intensity = Math.min(1, this.distance / 2000);
 
@@ -569,7 +580,8 @@ export class Game {
     if (this.powerups.jetpack > 0 && p.flying) this.track.airCoins(p.z, p.flyAltitude);
     if (p.flying) { this.fx.jet(p.x - 0.22, p.y + 0.7, p.z + 0.4); this.fx.jet(p.x + 0.22, p.y + 0.7, p.z + 0.4); }
         if (p.grounded && !p.flying && Math.random() < dt * 10) this.fx.dust(p.x, p.y, p.z + 1.0, 1);
-    if (p.hover && p.grounded) this.fx.hoverTrail(p.x + 0.2, p.y + 0.6, p.z + 1.4);
+    if (p.hover && p.grounded) { this.fx.hoverTrail(p.x + 0.2, p.y + 0.6, p.z + 1.4); this.fx.turboTrail(p.x, p.y + 0.3, p.z + 1.2); this.camShake = Math.max(this.camShake, 0.08); }
+    if (p.rolling > 0 && p.grounded) this.fx.sparks(p.x + 0.55, p.y + 0.08, p.z + 0.3);
 
     // coins
     const magnet = this.powerups.magnet > 0;
@@ -685,7 +697,7 @@ export class Game {
       cam.lookAt(p.x * 0.5, this._camY + 1.05, p.z - 9);
     }
     // widen the lens a little when going fast (turbo / jetpack / headstart)
-    const wantFov = (this.baseFov || 60) + ((this.state === 'running' && (p.hover || p.flying || this.speed > 40)) ? 7 : 0);
+    const wantFov = (this.baseFov || 60) + ((this.state === 'running' && p.hover) ? 12 : (this.state === 'running' && (p.flying || this.speed > 40)) ? 7 : 0);
     if (Math.abs(cam.fov - wantFov) > 0.05) { cam.fov += (wantFov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
     this.sky.position.set(cam.position.x, 0, p.z);
     this.ground.position.z = p.z - 200;

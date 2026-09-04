@@ -135,7 +135,7 @@ export class UI {
     const word = this.game.dailyWord || '';
     this.hud = h(`<div id="hud">
       <div class="top">
-        <div><div class="score">0</div><span class="mult">x${this.game.multiplier}</span></div>
+        <div><div class="score">0</div><span class="mult">x${this.game.multiplier}</span><div class="dist"><span class="n">0</span> m</div><div class="zone"></div></div>
         <div class="right">
           <button class="icon-btn pause" aria-label="Pause">II</button>
           <div class="coins"><i class="ico coin"></i><span class="n">0</span></div>
@@ -144,8 +144,6 @@ export class UI {
       <div class="letters">${[...word].map((c, i) => `<span class="${i < this.game.dailyLettersCollected ? 'got' : ''}">${c}</span>`).join('')}</div>
       <div class="powerbars"></div>
       <button class="hover-btn"><span class="em">⚡</span><span class="n">×${s.hoverboards}</span><span class="charge">${'●'.repeat(this.game.bubbleCharge || 0)}${'○'.repeat(BUBBLES_PER_TURBO - (this.game.bubbleCharge || 0))}</span></button>
-      <div class="dist"><span class="n">0</span> m</div>
-      <div class="zone"></div>
       <div class="toasts"></div>
       <div class="speed-fx"></div>
     </div>`);

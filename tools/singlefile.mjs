@@ -11,7 +11,8 @@ for (const f of fs.readdirSync(path.join(dist, 'models'))) {
   if (!f.endsWith('.glb')) continue;
   models[f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + fs.readFileSync(path.join(dist, 'models', f)).toString('base64');
 }
-const inject = `<script>window.__MODEL_URLS=${JSON.stringify(models)};</script>`;
+const dracoJs = fs.readFileSync(path.join(dist, 'draco', 'draco_decoder.js'), 'utf8');
+const inject = `<script>window.__MODEL_URLS=${JSON.stringify(models)};window.__DRACO_JS=${JSON.stringify(dracoJs)};</script>`;
 if (js) { const code = fs.readFileSync(path.join(dist, js[1]), 'utf8').replace(/<\/script/g, '<\\/script'); html = html.replace(js[0], () => `${inject}<script type="module">${code}</script>`); }
 html = html.replace(/<link rel="(manifest|icon|apple-touch-icon)"[^>]*>\n?/g, '');
 html = html.replace("window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))", '');

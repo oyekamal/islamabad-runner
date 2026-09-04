@@ -5,6 +5,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 const q = new URLSearchParams(location.search);
 const model = q.get('m') || 'runner.glb';
 const clipName = q.get('a') || '';
@@ -23,7 +24,8 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.2));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(3, 8, 4); scene.add(sun);
 const grid = new THREE.GridHelper(10, 10); scene.add(grid);
 scene.add(new THREE.AxesHelper(2));
-new GLTFLoader().load('/models/' + model, (g) => {
+const gl = new GLTFLoader(); const dr = new DRACOLoader(); dr.setDecoderPath('/draco/'); gl.setDRACOLoader(dr);
+gl.load('/models/' + model, (g) => {
   const node = q.get('n');
   if (node) { const n = g.scene.getObjectByName(node); if (!n) { document.getElementById('info').textContent='no node '+node+' have: '+g.scene.children.map(c=>c.name).join(','); window.__done=true; return; } n.position.set(0,0,0); scene.add(n); } else scene.add(g.scene);
   const names = g.animations.map(a => a.name + ':' + a.duration.toFixed(2));

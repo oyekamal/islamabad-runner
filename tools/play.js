@@ -118,6 +118,7 @@ import { chromium } from 'playwright';
     await page.waitForTimeout(total / n);
     if (mode === 'auto' && i === 1) await page.keyboard.press('ArrowUp');
     if (mode === 'auto' && i === 2) await page.keyboard.press('ArrowLeft');
+    if (mode === 'auto' && process.env.DUCK) { await page.keyboard.press('ArrowDown'); await page.waitForTimeout(+process.env.DUCK); }
     await page.screenshot({ path: `${prefix}_${i}.png` });
   }
   const info = await page.evaluate(() => { const g = window.__game; return g ? `state=${g.state} dist=${g.distance.toFixed(0)} score=${g.run ? g.run.score.toFixed(0) : '-'} coins=${g.run ? g.run.coins : '-'} fps=${g.fps.toFixed(0)} live=${g.track.pool.live} obstacles=${g.track.obstacles.length} calls=${g.renderer.info.render.calls} tris=${g.renderer.info.render.triangles}` : 'no game'; });

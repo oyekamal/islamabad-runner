@@ -14,6 +14,7 @@ export class Pool {
     if (!obj) {
       obj = this.assets.prop(name);
       obj.userData.poolName = name;
+      obj.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
       this.scene.add(obj);
     }
     obj.visible = true;
