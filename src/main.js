@@ -24,5 +24,5 @@ assets.load((p) => ui.showLoading(p)).then(() => {
 
 // PWA service worker (only in production builds served over https)
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.Capacitor) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }

@@ -272,6 +272,13 @@ def tunnel():
     o.append(box("lining_c", (W - 0.6, L, 0.05), (0, L / 2, H - 0.32), inner))
     for i in range(3):
         o.append(box("lamp", (0.6, 1.4, 0.08), (0, 2 + i * 4, H - 0.36), lamp))
+    strip = mat("tunnel_strip", "#ff7a1a", emissive="#ff7a1a", emissive_strength=1.5)
+    strip2 = mat("tunnel_strip2", "#1fb2a6", emissive="#1fb2a6", emissive_strength=1.5)
+    for sx in (-1, 1):
+        o.append(box("strip", (0.06, L, 0.12), (sx * (W / 2 - 0.36), L / 2, 1.2), strip))
+        o.append(box("strip2", (0.06, L, 0.12), (sx * (W / 2 - 0.36), L / 2, 2.6), strip2))
+        for k in range(3):
+            o.append(box("tg", (0.05, 1.6, 1.0), (sx * (W / 2 - 0.37), 2 + k * 4, 1.9), (mat("g_pink", "#e83e8c"), mat("g_yellow", "#ffcc33"), mat("g_teal", "#1fb2a6"))[k], bevel=0.1))
     o.append(box("trim", (W + 0.7, 0.3, 0.4), (0, 0.15, H + 0.2), trim))
     o.append(box("trim2", (W + 0.7, 0.3, 0.4), (0, L - 0.15, H + 0.2), trim))
     register(o, "tunnel")
@@ -369,10 +376,110 @@ def container_stack():
     register(o, "container_stack")
 
 
+
+def wall_graffiti(idx):
+    """Side wall variants (12 m) with bold graffiti blocks and Islamabad street details."""
+    import random
+    random.seed(100 + idx)
+    sand = mat("wall_sand", "#e3cfa6")
+    sand2 = mat("wall_sand2", "#d7bf90")
+    brick = mat("wall_brick", "#c47a4a")
+    dark = mat("pr_dark", "#2b2b2b")
+    palette = [mat("g_teal", "#1fb2a6"), mat("g_orange", "#ff7a1a"), mat("g_pink", "#e83e8c"), mat("g_yellow", "#ffcc33"),
+               mat("g_purple", "#7b3fe4"), mat("g_blue", "#2c7be5"), mat("g_green", "#2fbf71"), mat("g_white", "#f7f7f7")]
+    o = []
+    L = 12.0
+    o.append(box("wall", (0.6, L, 3.2), (0, L / 2, 1.6), sand if idx % 2 == 0 else sand2))
+    o.append(box("base", (0.7, L, 0.5), (0, L / 2, 0.25), brick))
+    o.append(box("cap", (0.8, L, 0.2), (0, L / 2, 3.3), brick))
+    # graffiti: layered blobs on the -X face
+    y = 0.8
+    while y < L - 1.0:
+        w = random.uniform(1.2, 3.2)
+        h = random.uniform(0.8, 1.8)
+        z = random.uniform(1.0, 2.4)
+        c = random.choice(palette)
+        o.append(box("g", (0.05, w, h), (-0.32, y + w / 2, z), c, bevel=0.1))
+        # highlight / outline layers
+        c2 = random.choice(palette)
+        o.append(box("g2", (0.04, w * 0.6, h * 0.5), (-0.345, y + w / 2 + random.uniform(-0.3, 0.3), z + random.uniform(-0.2, 0.2)), c2, bevel=0.08))
+        if random.random() < 0.5:
+            o.append(cyl("g3", h * 0.35, 0.04, (-0.35, y + w / 2 + random.uniform(-0.5, 0.5), z + random.uniform(-0.3, 0.3)), random.choice(palette), rot=(0, 90, 0), verts=14))
+        y += w + random.uniform(0.3, 1.2)
+    # occasional drain pipe / lamp bracket
+    if idx % 3 == 0:
+        o.append(cyl("pipe", 0.06, 3.2, (-0.36, 1.0, 1.6), dark, verts=8))
+    register(o, f"wall_graffiti_{idx}")
+
+
+def lamp_post():
+    grey = mat("gantry", "#6b7280")
+    lamp = mat("street_lamp", "#fff5c2", emissive="#fff5c2", emissive_strength=2.0)
+    o = [cyl("post", 0.08, 5.0, (0, 0, 2.5), grey, verts=8),
+         box("arm", (1.4, 0.1, 0.1), (-0.65, 0, 4.95), grey),
+         box("head", (0.6, 0.3, 0.15), (-1.3, 0, 4.9), grey),
+         box("bulb", (0.5, 0.24, 0.05), (-1.3, 0, 4.81), lamp)]
+    register(o, "lamp_post")
+
+
+def dhaba():
+    """Roadside chai dhaba: counter, awning, kettle, stools."""
+    wood = mat("dh_wood", "#8b5a2b")
+    awn = mat("dh_awning", "#e0382b")
+    awn2 = mat("dh_awning2", "#f7f7f7")
+    steel = mat("dh_steel", "#c9d1d9")
+    o = [box("counter", (2.4, 1.0, 1.0), (0, 0.5, 0.5), wood, bevel=0.03),
+         box("top", (2.6, 1.2, 0.08), (0, 0.5, 1.04), steel),
+         cyl("pole1", 0.05, 2.6, (-1.2, 0.05, 1.3), steel, verts=8), cyl("pole2", 0.05, 2.6, (1.2, 0.05, 1.3), steel, verts=8),
+         cyl("pole3", 0.05, 2.6, (-1.2, 1.15, 1.3), steel, verts=8), cyl("pole4", 0.05, 2.6, (1.2, 1.15, 1.3), steel, verts=8)]
+    for i in range(6):
+        o.append(box("awn", (0.45, 1.5, 0.06), (-1.15 + i * 0.46, 0.6, 2.62), awn if i % 2 == 0 else awn2))
+    o.append(cyl("kettle", 0.18, 0.3, (-0.6, 0.5, 1.22), steel, verts=10))
+    o.append(cyl("kettle2", 0.14, 0.25, (-0.2, 0.6, 1.2), steel, verts=10))
+    for i in range(3):
+        o.append(cyl("cup", 0.05, 0.08, (0.3 + i * 0.25, 0.4, 1.12), mat("cup", "#ffffff"), verts=8))
+    for x in (-0.8, 0.0, 0.8):
+        o.append(cyl("stool", 0.2, 0.05, (x, -0.8, 0.45), wood, verts=8))
+        o.append(cyl("stool_leg", 0.04, 0.45, (x, -0.8, 0.22), steel, verts=6))
+    register(o, "dhaba")
+
+
+def bench():
+    wood = mat("dh_wood", "#8b5a2b")
+    steel = mat("gantry", "#6b7280")
+    o = [box("seat", (1.8, 0.5, 0.08), (0, 0, 0.45), wood), box("back", (1.8, 0.08, 0.5), (0, -0.25, 0.75), wood),
+         box("leg1", (0.08, 0.5, 0.45), (-0.8, 0, 0.22), steel), box("leg2", (0.08, 0.5, 0.45), (0.8, 0, 0.22), steel)]
+    register(o, "bench")
+
+
+def rickshaw():
+    """Parked auto-rickshaw with truck-art colours — side decoration."""
+    green = mat("rk_green", "#1f8f4a")
+    yellow = mat("pr_yellow", "#f5c400")
+    dark = mat("pr_dark", "#2b2b2b")
+    red = mat("bar_red", "#e0382b")
+    o = [box("body", (1.3, 2.2, 1.0), (0, 0, 0.75), green, bevel=0.1),
+         box("roof", (1.4, 2.4, 0.1), (0, 0, 1.7), yellow, bevel=0.03),
+         box("hood", (1.0, 0.8, 0.6), (0, 1.4, 0.6), green, bevel=0.1),
+         box("windshield", (0.9, 0.05, 0.6), (0, 1.0, 1.35), mat("glass", "#8fd3ff", rough=0.2)),
+         cyl("wheel_f", 0.3, 0.2, (0, 1.5, 0.3), dark, rot=(0, 90, 0), verts=12),
+         cyl("wheel_l", 0.3, 0.2, (-0.7, -0.6, 0.3), dark, rot=(0, 90, 0), verts=12),
+         cyl("wheel_r", 0.3, 0.2, (0.7, -0.6, 0.3), dark, rot=(0, 90, 0), verts=12)]
+    for i in range(4):
+        o.append(box("deco", (0.06, 0.3, 0.3), (-0.66, -0.7 + i * 0.45, 0.9), red if i % 2 else yellow))
+        o.append(box("deco2", (0.06, 0.3, 0.3), (0.66, -0.7 + i * 0.45, 0.9), red if i % 2 else yellow))
+    for x in (-0.4, 0.4):
+        o.append(cyl("pole", 0.04, 0.7, (x, -1.0, 1.35), dark, verts=6))
+    register(o, "rickshaw")
+
+
 if __name__ == "__main__":
     reset()
     for fn in (train_passenger, train_metro, train_freight, train_ramp,
                barrier_low, barrier_high, barrier_mid, barrier_wall, bush, light_pole,
-               tunnel, pillar, overpass, station_platform, ground_tile, wall_segment, container_stack):
+               tunnel, pillar, overpass, station_platform, ground_tile, wall_segment, container_stack,
+               lamp_post, dhaba, bench, rickshaw):
         fn()
+    for i in range(4):
+        wall_graffiti(i)
     export("props.glb", PROPS, bake=True)

@@ -1,0 +1,9 @@
+{
+  "appId": "com.oyekamal.islamabadrunner",
+  "appName": "Islamabad Runner",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#74c0ff" },
+  "plugins": { "SplashScreen": { "launchShowDuration": 0 } }
+}

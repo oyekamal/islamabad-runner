@@ -75,8 +75,9 @@ def build_runner():
         P(f"LowerLeg.{side}", box(f"shoe_{side}", (0.24, 0.40, 0.14), (lx, 0.06, 0.09), shoe, bevel=0.03))
         P(f"LowerLeg.{side}", box(f"sole_{side}", (0.25, 0.42, 0.05), (lx, 0.06, 0.03), shoe_sole, bevel=0.01))
         P(f"LowerLeg.{side}", box(f"lace_{side}", (0.14, 0.14, 0.03), (lx, 0.16, 0.165), accent))
-        P(f"LowerLeg.{side}", box(f"heel_{side}", (0.25, 0.08, 0.15), (lx, -0.12, 0.09), accent))
-        P(f"LowerLeg.{side}", box(f"swoosh_{side}", (0.26, 0.2, 0.05), (lx, 0.02, 0.09), accent))
+        P(f"LowerLeg.{side}", box(f"swoosh_l_{side}", (0.02, 0.22, 0.05), (lx - 0.125, 0.0, 0.09), accent))
+        P(f"LowerLeg.{side}", box(f"swoosh_r_{side}", (0.02, 0.22, 0.05), (lx + 0.125, 0.0, 0.09), accent))
+        P(f"LowerLeg.{side}", box(f"heel_{side}", (0.10, 0.03, 0.08), (lx, -0.145, 0.11), accent))
 
     mesh = join(all_mesh_objects(), "RunnerMesh")
 

@@ -1,7 +1,6 @@
 // Usage: node tools/shot.js <url-path-and-query> <out.png> [width] [height] [waitMs]
 // Screenshot helper using headless chromium with SwiftShader WebGL.
-const { chromium } = require('playwright');
-const path = require('path');
+import { chromium } from 'playwright';
 (async () => {
   const [, , urlPath, out, w = '800', h = '800', wait = '1500'] = process.argv;
   const browser = await chromium.launch({

@@ -558,6 +558,7 @@ export class Game {
       } else r.trainStreak = 0;
     }
     // fell off a train? nothing special. Jetpack flame
+    if (this.powerups.jetpack > 0 && p.flying) this.track.airCoins(p.z, p.flyAltitude);
     if (p.flying) { this.fx.jet(p.x - 0.22, p.y + 0.7, p.z + 0.4); this.fx.jet(p.x + 0.22, p.y + 0.7, p.z + 0.4); }
     if (p.hover && p.grounded && Math.random() < 0.5) this.fx.hoverTrail(p.x, p.y + 0.05, p.z + 0.6);
     if (p.grounded && !p.hover && !p.flying && Math.random() < dt * 8) this.fx.dust(p.x, p.y, p.z + 0.4, 1);

@@ -390,38 +390,64 @@ export class Track {
   }
 
   // -- scenery ----------------------------------------------------------------------
+  _wall(s, tz) {
+    const name = chance(0.25) ? 'wall_segment' : 'wall_graffiti_' + Math.floor(Math.random() * 4);
+    this._decor(name, s * 4.6, 0, s > 0 ? tz : tz - TILE_L, s > 0 ? 0 : Math.PI);
+  }
+
+  _building(s, tz, names = ['building_0', 'building_1', 'building_2', 'building_3', 'building_4', 'building_5'], scaleY = null) {
+    this._decor(pick(names), s * rnd(12.5, 16), 0, tz - 3, s > 0 ? -Math.PI / 2 : Math.PI / 2, scaleY ? [1, scaleY, 1] : null);
+  }
+
   _sideScenery(zone, tz, i) {
-    const wallX = 4.6;
     const both = [-1, 1];
+    const streetProp = (s, z) => this._decor(pick(['dhaba', 'rickshaw', 'bench', 'bench', 'tree', 'palm']), s * rnd(6.2, 8.5), 0, z, s > 0 ? Math.PI / 2 : -Math.PI / 2);
     switch (zone) {
       case 'avenue':
-        for (const s of both) this._decor('wall_segment', s * wallX, 0, s > 0 ? tz : tz - TILE_L, s > 0 ? 0 : Math.PI);
+        for (const s of both) this._wall(s, tz);
         if (i % 2 === 0) for (const s of both) this._decor('tree', s * rnd(6.5, 8), 0, tz - rnd(0, 8));
-        if (i === 2) { const s = pick(both); this._decor(pick(['building_0', 'building_1', 'building_2', 'building_3', 'building_4', 'building_5']), s * rnd(13, 17), 0, tz - 3, s > 0 ? -Math.PI / 2 : Math.PI / 2); }
+        if (i % 2 === 1) { const s = pick(both); this._decor('lamp_post', s * 5.6, 0, tz - 4, s > 0 ? Math.PI : 0); }
+        if (i === 2) this._building(pick(both), tz);
+        if (i === 3 && chance(0.6)) streetProp(pick(both), tz - 4);
         if (i === 4 && chance(0.5)) { const s = pick(both); this._decor(pick(['billboard_0', 'billboard_1', 'billboard_2']), s * 9, 0, tz, s > 0 ? -0.35 : 0.35); }
         break;
       case 'metro':
         if (i === 0) for (const s of both) this._decor('metro_station', s * 6.6, 0, s > 0 ? tz : tz - 14, s > 0 ? 0 : Math.PI);
         if (i === 2) for (const s of both) this._decor('station_platform', s * 5.6, 0, s > 0 ? tz : tz - 24, s > 0 ? 0 : Math.PI);
-        if (i === 1) { const s = pick(both); this._decor(pick(['building_2', 'building_4', 'building_5']), s * rnd(13, 17), 0, tz, s > 0 ? -Math.PI / 2 : Math.PI / 2); }
+        if (i === 1 || i === 3) this._building(pick(both), tz, ['building_2', 'building_4', 'building_5']);
         if (i === 4 && chance(0.4)) this._decor('overpass_sign', 0, 0, tz);
+        if (i === 4) for (const s of both) this._decor('lamp_post', s * 5.6, 0, tz - 6, s > 0 ? Math.PI : 0);
         break;
       case 'redzone':
-        for (const s of both) this._decor('wall_segment', s * wallX, 0, s > 0 ? tz : tz - TILE_L, s > 0 ? 0 : Math.PI);
+        for (const s of both) this._wall(s, tz);
         if (i % 2 === 1) { const s = pick(both); this._decor('container_yard', s * 10, 0, tz, s > 0 ? 0 : Math.PI); }
-        if (i === 3) { const s = pick(both); this._decor(pick(['building_0', 'building_3']), s * rnd(14, 18), 0, tz, s > 0 ? -Math.PI / 2 : Math.PI / 2); }
+        if (i === 3) this._building(pick(both), tz, ['building_0', 'building_3']);
         if (i === 0 && chance(0.5)) for (const s of both) this._decor('container_stack', s * 7, 0, tz);
+        if (i === 2) { const s = pick(both); this._decor('lamp_post', s * 5.6, 0, tz - 4, s > 0 ? Math.PI : 0); }
         break;
       case 'hills':
         for (const s of both) { this._decor(chance(0.5) ? 'tree' : 'palm', s * rnd(5.5, 7.5), 0, tz - rnd(0, 6)); }
         if (i % 2 === 0) for (const s of both) this._decor('tree', s * rnd(9, 14), 0, tz - rnd(0, 8));
+        if (i === 1 && chance(0.5)) streetProp(pick(both), tz - 3);
         if (i === 2 && chance(0.4)) { const s = pick(both); this._decor(pick(['billboard_2', 'billboard_1']), s * 8.5, 0, tz, s > 0 ? -0.35 : 0.35); }
         break;
       case 'bluearea':
-        for (const s of both) this._decor('wall_segment', s * wallX, 0, s > 0 ? tz : tz - TILE_L, s > 0 ? 0 : Math.PI);
-        if (i % 2 === 0) for (const s of both) this._decor(pick(['building_2', 'building_4', 'building_5', 'building_1']), s * rnd(12, 15), 0, tz, s > 0 ? -Math.PI / 2 : Math.PI / 2, [1, rnd(1.2, 2.2), 1]);
+        for (const s of both) this._wall(s, tz);
+        if (i % 2 === 0) for (const s of both) this._building(s, tz, ['building_2', 'building_4', 'building_5', 'building_1'], rnd(1.2, 2.2));
         if (i === 1 && chance(0.6)) { const s = pick(both); this._decor(pick(['billboard_0', 'billboard_2']), s * 9, 0, tz, s > 0 ? -0.35 : 0.35); }
+        if (i === 3) for (const s of both) this._decor('lamp_post', s * 5.6, 0, tz - 4, s > 0 ? Math.PI : 0);
         break;
+    }
+  }
+
+  /** Coins floating at jetpack altitude, spawned while flying. */
+  airCoins(playerZ, altitude) {
+    if (this.airCoinZ === undefined || this.airCoinZ > playerZ - 30) this.airCoinZ = playerZ - 60;
+    while (this.airCoinZ > playerZ - 120) {
+      const lane = pick([-1, 0, 1]);
+      const n = 6 + Math.floor(Math.random() * 6);
+      for (let k = 0; k < n; k++) this.coins.add(lane * LANE_W, altitude - 0.3 + Math.sin(k * 0.7) * 0.4, this.airCoinZ - k * 1.8);
+      this.airCoinZ -= n * 1.8 + rnd(6, 16);
     }
   }
 

@@ -1,6 +1,6 @@
 // Headless gameplay harness.
 // node tools/play.js <outPrefix> [seconds=6] [w=450] [h=800] [mode=auto|menu|bot] [shots=4]
-const { chromium } = require('playwright');
+import { chromium } from 'playwright';
 (async () => {
   const [, , prefix = 'shots/play', seconds = '6', w = '450', h = '800', mode = 'auto', shots = '4'] = process.argv;
   const browser = await chromium.launch({
@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   const logs = [];
   page.on('console', (m) => { if (m.type() !== 'debug' && m.type() !== 'log') logs.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));
-  const url = 'http://localhost:5173/' + (mode === 'menu' ? '' : '?auto=1' + (process.env.Q || ''));
+  const url = (process.env.BASE || 'http://localhost:5173/') + (mode === 'menu' ? '' : '?auto=1' + (process.env.Q || ''));
   await page.goto(url, { waitUntil: 'load' });
   try { await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 }); } catch (e) { logs.push('timeout waiting ready'); }
   if (mode === 'bot') {
@@ -83,6 +83,22 @@ const { chromium } = require('playwright');
     const info = await page.evaluate(() => { const g = window.__game; const m = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : '?'; return `dist=${g.distance.toFixed(0)} speed=${g.speed.toFixed(1)} score=${g.run ? g.run.score.toFixed(0) : '-'} coins=${g.run ? g.run.coins : '-'} live=${g.track.pool.live} obstacles=${g.track.obstacles.length} decor=${g.track.decor.length} coinsLive=${g.track.coins.items.length} calls=${g.renderer.info.render.calls} geoms=${g.renderer.info.memory.geometries} heap=${m}`; });
     console.log('SOAK', info, 'deaths=' + deaths, JSON.stringify(causes));
     await page.screenshot({ path: `${prefix}_soak.png` });
+  }
+  if (mode === 'ui') {
+    const screens = ['showShop:items', 'showShop:characters', 'showShop:boards', 'showShop:upgrades', 'showMissions', 'showDaily', 'showRecords', 'showSettings'];
+    await page.evaluate(() => { window.__game.save.data.coins = 12345; window.__game.save.data.keys = 3; });
+    for (const sc of screens) {
+      const [fn, arg] = sc.split(':');
+      await page.evaluate(([fn, arg]) => window.__ui[fn](arg), [fn, arg]);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${prefix}_${fn}${arg ? '_' + arg : ''}.png` });
+    }
+    // pause screen during a run
+    await page.evaluate(() => { window.__ui.showMenu(); window.__ui.startFromMenu(); });
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => window.__game.pause());
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${prefix}_pause.png` });
   }
   const n = +shots;
   const total = +seconds * 1000;
