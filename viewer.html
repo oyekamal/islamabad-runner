@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Model viewer</title>
+<style>html,body{margin:0;background:#88c0ff}canvas{display:block}#info{position:fixed;top:4px;left:4px;font:12px monospace;color:#000;white-space:pre}</style></head>
+<body><div id="info"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const q = new URLSearchParams(location.search);
+const model = q.get('m') || 'runner.glb';
+const clipName = q.get('a') || '';
+const t = parseFloat(q.get('t') || '0');
+const yaw = parseFloat(q.get('yaw') || '35');
+const dist = parseFloat(q.get('d') || '5');
+const h = parseFloat(q.get('h') || '1');
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x88c0ff);
+const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+cam.position.set(Math.sin(yaw * Math.PI / 180) * dist, h + dist * 0.35, Math.cos(yaw * Math.PI / 180) * dist);
+cam.lookAt(0, h, 0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(3, 8, 4); scene.add(sun);
+const grid = new THREE.GridHelper(10, 10); scene.add(grid);
+scene.add(new THREE.AxesHelper(2));
+new GLTFLoader().load('/models/' + model, (g) => {
+  const node = q.get('n');
+  if (node) { const n = g.scene.getObjectByName(node); if (!n) { document.getElementById('info').textContent='no node '+node+' have: '+g.scene.children.map(c=>c.name).join(','); window.__done=true; return; } n.position.set(0,0,0); scene.add(n); } else scene.add(g.scene);
+  const names = g.animations.map(a => a.name + ':' + a.duration.toFixed(2));
+  let info = 'clips: ' + names.join(' ') + '\n';
+  const box = new THREE.Box3().setFromObject(g.scene); const s = new THREE.Vector3(); box.getSize(s);
+  info += `size ${s.x.toFixed(2)} ${s.y.toFixed(2)} ${s.z.toFixed(2)} min y ${box.min.y.toFixed(2)}\n`;
+  let tris = 0; g.scene.traverse(o => { if (o.isMesh) { tris += o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3; } });
+  info += 'tris ' + tris + '\n';
+  document.getElementById('info').textContent = info;
+  if (g.animations.length) {
+    const mixer = new THREE.AnimationMixer(g.scene);
+    const clip = g.animations.find(a => a.name === clipName) || g.animations[0];
+    const action = mixer.clipAction(clip); action.play();
+    mixer.setTime(t);
+  }
+  renderer.render(scene, cam);
+  window.__done = true;
+}, undefined, (e) => { document.getElementById('info').textContent = 'ERR ' + e; window.__done = true; });
+</script></body></html>
