@@ -41,7 +41,7 @@ export class Assets {
     const loader = new GLTFLoader();
     let done = 0;
     await Promise.all(FILES.map((f) => new Promise((res, rej) => {
-      loader.load(`models/${f}.glb`, (g) => {
+      loader.load((window.__MODEL_URLS && window.__MODEL_URLS[f]) || `models/${f}.glb`, (g) => {
         simplifyMaterials(g.scene);
         this.gltf[f] = g;
         done++;

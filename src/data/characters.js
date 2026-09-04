@@ -18,7 +18,7 @@ export const CHARACTERS = [
 
 // Bikes (the "hoverboard" catalogue): recolour the bike and change Turbo behaviour.
 export const BIKES = [
-  { id: 'default', name: 'Honda 70 Classic', desc: 'The trusty red seventy. Never dies.', cost: 0, palette: { bike_body: '#e0382b' }, swatch: '#e0382b' },
+  { id: 'default', name: 'Seventy Classic', desc: 'The trusty red seventy. Never dies.', cost: 0, palette: { bike_body: '#e0382b' }, swatch: '#e0382b' },
   { id: 'truckart', name: 'Truck Art', desc: 'Painted in Rawalpindi. Loud and proud.', cost: 5000, palette: { bike_body: '#f5c400', bike_dark: '#1f6b3a', rim: '#ff7a1a' }, swatch: '#f5c400' },
   { id: 'margalla', name: 'Margalla Green', desc: 'Trail bike for the hills.', cost: 8000, palette: { bike_body: '#1f6b3a', rim: '#8fb47a' }, swatch: '#1f6b3a' },
   { id: 'metro', name: 'Metro Express', desc: 'Turbo runs 10% faster.', cost: 12000, palette: { bike_body: '#f7f7f7', bike_dark: '#d6202b' }, swatch: '#f7f7f7', bonus: 'speed' },

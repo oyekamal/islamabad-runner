@@ -8,3 +8,5 @@ android/.gradle
 android/build
 android/local.properties
 *.keystore
+artifact.html
+islamabad-runner-3d.html

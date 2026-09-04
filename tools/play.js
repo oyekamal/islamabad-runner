@@ -97,7 +97,7 @@ import { chromium } from 'playwright';
     await page.screenshot({ path: `${prefix}_soak.png` });
   }
   if (mode === 'ui') {
-    const screens = ['showShop:items', 'showShop:characters', 'showShop:boards', 'showShop:upgrades', 'showMissions', 'showDaily', 'showRecords', 'showSettings'];
+    const screens = ['showShop:items', 'showShop:characters', 'showShop:bikes', 'showShop:upgrades', 'showMissions', 'showDaily', 'showRecords', 'showSettings'];
     await page.evaluate(() => { window.__game.save.data.coins = 12345; window.__game.save.data.keys = 3; });
     for (const sc of screens) {
       const [fn, arg] = sc.split(':');
