@@ -42,9 +42,20 @@ Subway-Surfers mechanics, Islamabad skin:
 
 ```bash
 npm install
-npm run dev       # Vite dev server → http://localhost:5173
-npm run build     # production build → dist/
+npm run dev          # Vite dev server → http://localhost:5173
+npm run build        # production build → dist/ (also precaches the service worker, see below)
+npm run test:offline # proof: build it, then confirm it boots with the network fully cut
 ```
+
+`npm run build` runs `vite build` then `tools/precache.mjs`, which walks the emitted
+`dist/` and rewrites `dist/sw.js` with the full file list to precache (install →
+`cache.addAll` + `skipWaiting`, activate → drop old caches + `clients.claim()`,
+fetch → cache-first with a `./index.html` fallback for navigations) and a cache
+name hashed from that list, so every build actually ships as an update instead of
+silently caching nothing. The game makes **zero network requests** — every asset
+(models, audio, UI) ships in the bundle, and `npm run test:offline` proves it by
+building, going fully offline in a headless browser, and asserting the app still
+boots.
 
 ### Run it (Android)
 
@@ -70,8 +81,11 @@ index.html, src/            Vite + Three.js game (ES modules)
   src/ui/UI.js, ui.css      HUD, menus, shop, missions, word hunt, settings
   src/data/                 characters, bikes, missions, daily words
 tools/blender/*.py          bpy scripts that generate EVERY 3D asset (public/models/*.glb)
-tools/play.js               headless Playwright harness (screenshots, bot, soak test)
-android/                    Capacitor Android project (API 36, portrait, immersive)
+tools/play.js               headless Playwright harness (screenshots, bot, soak, video modes)
+tools/precache.mjs          runs after `vite build`; rewrites dist/sw.js with the precache list
+tools/offline-test.mjs      `npm run test:offline` — proves the built app boots with no network
+public/sw.js                offline-first service worker template (see Run it (web) above)
+android/                    Capacitor Android project (API 36, portrait, immersive, no INTERNET permission)
 store/                      Play Store icon, feature graphic, splash
 docs/store-listing.md       listing copy + data-safety answers
 public/privacy.html         privacy policy (host it and paste the URL in Play Console)

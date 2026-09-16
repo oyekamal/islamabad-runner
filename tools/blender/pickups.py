@@ -215,6 +215,13 @@ def turbo_flame():
 
 if __name__ == "__main__":
     reset()
-    for fn in (coin, jetpack, sneakers, magnet, multiplier, mystery_box, key, hoverboard, headstart_rocket, msg_bubble, biryani, turbo_flame):
+    for fn in (
+        coin, jetpack, sneakers, magnet, multiplier,
+        # mystery_box,      # dead: not a spawnable Track.js pickup kind (biryani is the actual "mystery box" reward)
+        key,
+        # hoverboard,       # dead: Turbo is an abstract stat (save.data.hoverboards), never a Track.js pickup mesh
+        # headstart_rocket, # dead: Headstart is an abstract stat (save.data.headstarts), never a Track.js pickup mesh
+        msg_bubble, biryani, turbo_flame,
+    ):
         fn()
     export("pickups.glb", PROPS, bake=True)

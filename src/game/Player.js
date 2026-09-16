@@ -82,6 +82,8 @@ export class Player {
     this.laneT = 1;
     this.laneFrom = 0;
     this.fastFall = false;
+    this.pendingJump = 0;       // jump pressed while airborne: fires on landing (input buffer)
+    this.bufferedJump = false;  // set for one frame when a buffered jump fired
     this.height = PLAYER.height;
     this.tilt = 0;
     this.flame.visible = false;
@@ -122,7 +124,7 @@ export class Player {
 
   jump() {
     if (this.dead || this.flying) return false;
-    if (!this.grounded) return false;
+    if (!this.grounded) { this.pendingJump = 0.15; return false; }
     this.vy = this.superJump ? PLAYER.superJumpVel : PLAYER.jumpVel;
     this.grounded = false;
     this.jumping = true;
@@ -203,6 +205,7 @@ export class Player {
           this.jumping = false;
           this.fastFall = false;
           if (this.rolling <= 0) this.play(this.moveClip(), 0.08);
+          if (this.pendingJump > 0) { this.pendingJump = 0; if (this.jump()) this.bufferedJump = true; }
         }
       } else if (this.y > this.groundY + 0.05) {
         this.grounded = false;
@@ -212,6 +215,7 @@ export class Player {
       }
     }
 
+    if (this.pendingJump > 0) this.pendingJump -= dt;
     if (this.rolling > 0) {
       this.rolling -= dt;
       if (this.rolling <= 0 && !this.dead) this.play(this.grounded ? this.moveClip() : 'Jump', 0.1);

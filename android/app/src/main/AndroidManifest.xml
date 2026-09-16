@@ -41,7 +41,12 @@
 
     <!-- Permissions -->
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- No android.permission.INTERNET: the app ships every asset (index.html, JS,
+         models, precached SW) in the bundle via Capacitor's local https://localhost
+         WebView scheme (capacitor.config.json server.androidScheme=https, no
+         server.url). Nothing in src/ makes an http(s):// request — see the offline
+         PWA proof in tools/offline-test.mjs. Re-add this permission only if a
+         future feature needs a real network call (e.g. a remote leaderboard). -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="true" />

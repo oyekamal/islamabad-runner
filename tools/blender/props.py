@@ -830,11 +830,26 @@ def flag_pole():
 
 if __name__ == "__main__":
     reset()
-    for fn in (train_passenger, train_metro, train_freight, train_ramp,
-               barrier_low, barrier_high, barrier_mid, barrier_wall, bush, light_pole,
-               tunnel, pillar, overpass, station_platform, ground_tile, wall_segment, container_stack,
-               lamp_post, dhaba, bench, rickshaw, gantry, wires, station_roof,
-               road_tile, container_truck, army_jeep, dirt_ramp, police_barricade, road_closed_gantry, cones, teargas, tyre_stack, police_van, flag_pole):
+    for fn in (
+        # train_passenger,  # dead: unused in Track.js, not exported
+        train_metro,
+        # train_freight,    # dead: unused in Track.js, not exported
+        # train_ramp,       # dead: unused in Track.js, not exported
+        # barrier_low,      # dead: unused in Track.js, not exported
+        # barrier_high,     # dead: 'barrier_high' obstacle type no longer exists (see Track.js)
+        barrier_mid, barrier_wall,
+        # bush,             # dead: unused in Track.js, not exported
+        # light_pole,       # dead: unused in Track.js, not exported
+        tunnel, pillar, overpass,
+        # station_platform, # dead: unused in Track.js, not exported
+        # ground_tile,      # dead: unused in Track.js, not exported
+        wall_segment, container_stack,
+        lamp_post, dhaba, bench, rickshaw,
+        # gantry,           # dead: unused in Track.js, not exported
+        # wires,            # dead: unused in Track.js, not exported
+        # station_roof,     # dead: unused in Track.js, not exported
+        road_tile, container_truck, army_jeep, dirt_ramp, police_barricade, road_closed_gantry, cones, teargas, tyre_stack, police_van, flag_pole,
+    ):
         fn()
     for i in range(4):
         wall_graffiti(i)

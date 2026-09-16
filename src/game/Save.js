@@ -25,6 +25,7 @@ const DEFAULTS = () => ({
   settings: { music: true, sfx: true, haptics: true, quality: 'auto' },
   leaderboard: [],             // [{score, coins, distance, date, character}]
   tutorialDone: false,
+  achievementsDone: [],        // ids from data/achievements.js already awarded
 });
 
 export class Save {

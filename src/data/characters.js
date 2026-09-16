@@ -1,12 +1,13 @@
 // Playable riders. Palette keys are material names inside biker.glb.
+// perk: 'coins' | 'shield' | 'powerups' — read by Game; perkText is shown on cards + menu.
 export const CHARACTERS = [
   { id: 'zain', name: 'Zain', desc: 'Sector G-9 courier. Knows every service road in the city.', cost: 0,
     palette: { jacket: '#1fb2a6', jacket_dark: '#158f86', pants: '#2c3e8f', helmet: '#ff7a1a', backpack: '#ffcc33', gloves: '#2b2b2b' } },
-  { id: 'noor', name: 'Noor', desc: 'Fastest in F-7. Rides the Margalla trails on weekends.', cost: 3000,
+  { id: 'noor', name: 'Noor', desc: 'Fastest in F-7. Rides the Margalla trails on weekends.', cost: 3000, perk: 'coins', perkText: '+10% coins on every run',
     palette: { jacket: '#e83e8c', jacket_dark: '#b82c6c', pants: '#2b2b2b', helmet: '#ffffff', backpack: '#1fb2a6', skin: '#f1c9a5' } },
-  { id: 'guddu', name: 'Guddu', desc: 'Rickshaw mechanic. Runs on Pepsi and paratha rolls.', cost: 6000,
+  { id: 'guddu', name: 'Guddu', desc: 'Rickshaw mechanic. Runs on Pepsi and paratha rolls.', cost: 6000, perk: 'shield', perkText: 'First stumble of every run is free',
     palette: { jacket: '#f5c400', jacket_dark: '#c99f00', pants: '#1f6b3a', helmet: '#2b2b2b', backpack: '#d6202b', skin: '#b87a52' } },
-  { id: 'rida', name: 'Rida', desc: 'Medical student at PIMS. Never late for a lecture.', cost: 12000,
+  { id: 'rida', name: 'Rida', desc: 'Medical student at PIMS. Never late for a lecture.', cost: 12000, perk: 'powerups', perkText: 'Power-ups last +3 s',
     palette: { jacket: '#7b3fe4', jacket_dark: '#5e2eb3', pants: '#f7f7f7', helmet: '#7b3fe4', backpack: '#ffcc33', skin: '#dba97e' } },
   { id: 'sardar', name: 'Sardar Ji', desc: 'Retired truck artist. His bike is a rolling canvas.', cost: 20000,
     palette: { jacket: '#ff5722', jacket_dark: '#c4401a', pants: '#2c3e8f', helmet: '#1fb2a6', backpack: '#2a8c4a', skin: '#a86a45' } },

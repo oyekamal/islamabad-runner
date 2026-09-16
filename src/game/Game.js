@@ -10,7 +10,9 @@ import { Save } from './Save.js';
 import { CHARACTERS, BIKES } from '../data/characters.js';
 import { MISSION_SETS, MAX_MULTIPLIER, DAILY_WORDS, DAILY_REWARDS } from '../data/missions.js';
 
-const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a, multiplier: 0x3d8bff, biryani: 0xffb347, key: 0xffd53d, letter: 0xffffff, msg_bubble: 0x25a244 };
+const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a, multiplier: 0x3d8bff, biryani: 0xffb347, key: 0xffd53d, token: 0x7b3fe4, letter: 0xffffff, msg_bubble: 0x25a244 };
+const STEP = 1 / 60;          // fixed simulation substep
+const MAX_STEPS = 4;          // per rendered frame; anything beyond is dropped
 
 export class Game {
   constructor(canvas, assets) {
@@ -23,14 +25,12 @@ export class Game {
     this.time = 0;
     this.distance = 0;
 
-    // renderer
-    const lowEnd = (navigator.hardwareConcurrency || 4) <= 4;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !lowEnd, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowEnd ? 1.5 : 2));
+    // renderer — quality from settings: low | auto (default) | high. Antialias is fixed at creation.
+    this.quality = this.save.data.settings.quality || 'auto';
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.quality === 'high', powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = lowEnd ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.NoToneMapping;
+    this._applyQuality(this.quality);
 
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(COLORS.fog, 60, 230);
@@ -64,7 +64,6 @@ export class Game {
     this.dailyLettersCollected = this.save.data.daily.letters;
     this._setupMissionBase();
 
-    this.clock = new THREE.Clock();
     this.slowmo = 1;
     this.frames = 0;
     this.fps = 60;
@@ -152,6 +151,15 @@ export class Game {
     this.scene.add(this.skyline);
   }
 
+  /** DPR + shadow settings for a quality tier (antialias can't change after renderer creation). */
+  _applyQuality(q) {
+    const dpr = window.devicePixelRatio || 1;
+    this.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(dpr, q === 'high' ? 2 : 1.5));
+    this.renderer.shadowMap.enabled = q !== 'low';
+    this.renderer.shadowMap.type = q === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
@@ -166,18 +174,18 @@ export class Game {
   characterDef() { return CHARACTERS.find((c) => c.id === this.save.data.character) || CHARACTERS[0]; }
   bikeDef() { return BIKES.find((b) => b.id === this.save.data.board) || BIKES[0]; }
 
+  /** Daily Word Hunt rollover. Uses the LOCAL calendar date throughout; safe to call on every run start. */
   _dailyWord() {
     const d = new Date();
+    const local = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
     const start = new Date(d.getFullYear(), 0, 0);
-    const day = Math.floor((d - start) / 86400000);
-    const today = d.toISOString().slice(0, 10);
+    const day = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - start) / 86400000);
+    const today = local(d);
     const daily = this.save.data.daily;
     if (daily.date !== today) {
-      // new day
-      if (daily.lastDone && daily.done) {
-        const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-        if (daily.lastDone !== y) daily.streak = 0;
-      }
+      // new day: the streak survives only if yesterday's word was completed
+      const yesterday = local(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
+      if (daily.lastDone !== yesterday) daily.streak = 0;
       daily.date = today; daily.letters = 0; daily.done = false;
       this.save.write();
     }
@@ -205,6 +213,9 @@ export class Game {
     this.audio.init();
     this.audio.startMusic();
     const s = this.save.data;
+    this.dailyWord = this._dailyWord();                  // re-run the day rollover on every start
+    this.dailyLettersCollected = s.daily.letters;
+    this.perk = this.characterDef().perk || null;        // 'coins' | 'shield' | 'powerups' | null
     this.distance = 0;
     this.speed = SPEED.start;
     this.baseMultiplier = Math.min(MAX_MULTIPLIER, 1 + s.missionSet);
@@ -226,7 +237,11 @@ export class Game {
       signals: 0, bushes: 0, centerRolls: 0, sameLane: 0, sameLaneCur: 0, magnetCoins: 0, boosterBonus: 0, headstarts: 0,
       noCoinScore: 0, noJumpScore: 0, noRollScore: 0, noPowerupScore: 0, allPowerups: 0, kinds: new Set(), earlyCaught: 0,
       hoverCrashed: false, time: 0, tokens: 0, dodgedIds: new Set(), bubbles: 0, laps: 0,
+      closeCalls: 0, newBestDistance: false, shieldUsed: false,
     };
+    this._lastCloseCall = -1;
+    this._laneChangeAt = -1; this._laneChangeFrom = 0;
+    this._perfFrames = 0; this._perfWall = 0; this._perfChecked = false;
     this.zoneId = null;
     this.lastLap = 0;
     this.player.play('Ride');
@@ -264,7 +279,7 @@ export class Game {
     this.audio.whistle();
     this.audio.stopMusic();
     this.camShake = 0.6;
-    this.slowmo = 0.35;
+    this.slowmo = 0.02; this.hitStop = 0.08;   // hit-stop, then 0.35 slow-mo (see _tick)
     this.fx.crash(this.player.x, this.player.y + 1, this.player.z);
     if (this.run.time < 10) this.run.earlyCaught = 1;
     this.deathCause = cause;
@@ -272,16 +287,40 @@ export class Game {
     if (navigator.vibrate && this.save.data.settings.haptics) navigator.vibrate(120);
   }
 
-  _afterDeath() {
-    this.state = 'dead';
+  /** Cost of the next revive: keys, or the coin equivalent. */
+  reviveCost() {
     const keysNeeded = REVIVE_KEYS[Math.min(this.reviveCount, REVIVE_KEYS.length - 1)];
-    this.emit('gameOver', { run: this.run, canRevive: this.save.data.keys >= keysNeeded, keysNeeded, cause: this.deathCause });
+    return { keysNeeded, coinsNeeded: keysNeeded * 400 };
   }
 
+  _afterDeath() {
+    this.state = 'dead';
+    const { keysNeeded, coinsNeeded } = this.reviveCost();
+    const s = this.save.data;
+    this.emit('gameOver', { run: this.run, canRevive: s.keys >= keysNeeded, keysNeeded, coinsNeeded, canReviveWithCoins: s.coins >= coinsNeeded, cause: this.deathCause });
+  }
+
+  /** Spend keys to continue the run. */
   revive() {
-    const keysNeeded = REVIVE_KEYS[Math.min(this.reviveCount, REVIVE_KEYS.length - 1)];
+    if (this.state !== 'dead') return false;
+    const { keysNeeded } = this.reviveCost();
     if (this.save.data.keys < keysNeeded) return false;
     this.save.data.keys -= keysNeeded;
+    this._doRevive();
+    return true;
+  }
+
+  /** Spend banked coins (keysNeeded * 400) to continue the run. */
+  reviveWithCoins() {
+    if (this.state !== 'dead') return false;
+    const { coinsNeeded } = this.reviveCost();
+    if (this.save.data.coins < coinsNeeded) return false;
+    this.save.data.coins -= coinsNeeded;
+    this._doRevive();
+    return true;
+  }
+
+  _doRevive() {
     this.reviveCount++;
     this.save.write();
     // clear the immediate neighbourhood and lift the player
@@ -296,15 +335,15 @@ export class Game {
     this.state = 'running';
     this.audio.init(); this.audio.startMusic();
     this.emit('revived');
-    return true;
   }
 
   /** Bank the run into the save. */
   finishRun() {
     const s = this.save.data;
     const r = this.run;
-    s.coins += r.coins;
-    this.save.addStat('coins', r.coins);
+    const banked = this.perk === 'coins' ? Math.ceil(r.coins * 11 / 10) : r.coins;   // Noor: +10% coins (integer maths, no float ceil)
+    s.coins += banked;
+    this.save.addStat('coins', banked);
     this.save.addStat('score', Math.floor(r.score));
     this.save.addScore({ score: Math.floor(r.score), coins: r.coins, distance: Math.floor(this.distance), date: new Date().toISOString().slice(0, 10), character: s.character });
     this._checkMissions(true);
@@ -337,8 +376,8 @@ export class Game {
     if (this.state !== 'running') return;
     const p = this.player;
     switch (t) {
-      case 'left': if (p.moveLane(-1)) { this.audio.swipe(); this.run.sameLaneCur = 0; } break;
-      case 'right': if (p.moveLane(1)) { this.audio.swipe(); this.run.sameLaneCur = 0; } break;
+      case 'left': if (p.moveLane(-1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
+      case 'right': if (p.moveLane(1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
       case 'up':
         if (p.jump()) { this.audio.jump(); this.run.jumps++; this.save.addStat('jumps'); if (!this.run.firstJump) this.run.firstJump = this.run.score; this.fx.dust(p.x, p.y, p.z + 0.3, 5); }
         break;
@@ -376,7 +415,7 @@ export class Game {
     const s = this.save.data;
     this.fx.powerup(p.x, p.y + 1, p.z, POWERUP_COLORS[kind] || 0xffffff);
     if (['jetpack', 'sneakers', 'magnet', 'multiplier'].includes(kind)) {
-      const dur = POWERUP_BASE_DURATION[kind] + POWERUP_UPGRADE_STEP * (s.upgrades[kind] || 0);
+      const dur = POWERUP_BASE_DURATION[kind] + POWERUP_UPGRADE_STEP * (s.upgrades[kind] || 0) + (this.perk === 'powerups' ? 3 : 0);
       this.powerups[kind] = dur;
       this.run.powerups++; this.save.addStat('powerups');
       this.run.kinds.add(kind);
@@ -405,6 +444,12 @@ export class Game {
       s.keys++; this.run.keys++; this.save.addStat('keys');
       this.audio.key();
       this.emit('toast', '+1 KEY');
+    } else if (kind === 'token') {
+      s.tokens++; this.run.tokens++; this.save.addStat('tokens');
+      this.audio.key();
+      this.emit('toast', '+1 TOKEN');
+      const ranger = CHARACTERS.find((c) => c.tokens);
+      if (ranger && s.tokens >= ranger.tokens && !s.unlockedCharacters.includes(ranger.id)) { s.unlockedCharacters.push(ranger.id); this.emit('toast', `${ranger.name.toUpperCase()} UNLOCKED!`); }
     } else if (kind === 'letter') {
       this.run.letters++; this.save.addStat('letters');
       this.dailyLettersCollected++;
@@ -427,7 +472,12 @@ export class Game {
     const s = this.save.data;
     const r = Math.random();
     let reward;
-    if (r < 0.45) { const c = [50, 100, 150, 250, 500][Math.floor(Math.random() * 5)]; s.coins += c; if (this.run) this.run.coins += 0; reward = { type: 'coins', amount: c }; }
+    if (r < 0.45) {
+      const c = [50, 100, 150, 250, 500][Math.floor(Math.random() * 5)];
+      // in a run the coins ride along in run.coins (banked + counted once by finishRun); otherwise bank now
+      if (this.run) this.run.coins += c; else { s.coins += c; this.save.addStat('coins', c); }
+      reward = { type: 'coins', amount: c };
+    }
     else if (r < 0.62) { s.keys++; reward = { type: 'keys', amount: 1 }; }
     else if (r < 0.78) { s.hoverboards++; reward = { type: 'hoverboard', amount: 1 }; }
     else if (r < 0.88) { s.tokens++; this.save.addStat('tokens'); if (this.run) this.run.tokens++; reward = { type: 'token', amount: 1 }; }
@@ -488,27 +538,41 @@ export class Game {
   // ------------------------------------------------------------------ main loop
   _loop() {
     requestAnimationFrame(() => this._loop());
-    let dt = Math.min(0.05, this.clock.getDelta());
-    this._fpsAcc += dt; this.frames++;
+    const now = performance.now();
+    const wall = this._lastFrame === undefined ? STEP : (now - this._lastFrame) / 1000;
+    this._lastFrame = now;
+    // fps from real wall-clock deltas (never clamped)
+    this._fpsAcc += wall; this.frames++;
     if (this._fpsAcc > 1) { this.fps = this.frames / this._fpsAcc; this.frames = 0; this._fpsAcc = 0; }
-    this.time += dt;
+    this.time += wall;
     if (this.state === 'paused') { this._render(); return; }
-    dt *= this.slowmo;
+    if (this.state === 'running' && this.run && this.run.time < 4) { this._perfFrames++; this._perfWall += wall; }
+    // fixed 1/60 s substeps so game time tracks wall time; at most MAX_STEPS per frame, the rest is dropped
+    this._acc = Math.min((this._acc || 0) + wall, MAX_STEPS * STEP);
+    let steps = 0;
+    while (this._acc >= STEP - 1e-9 && steps < MAX_STEPS) { this._acc -= STEP; steps++; this._tick(STEP); }
+    const dt = Math.min(0.25, wall) * this.slowmo;   // camera / particles: clamp so a hidden tab can't fling them
+    this.fx.update(dt);
+    this._updateCamera(dt);
+    this._render();
+  }
+
+  /** One fixed simulation step. `raw` is unscaled game-clock time; slow-mo scales it. */
+  _tick(raw) {
+    const dt = raw * this.slowmo;
     if (this.state === 'running') this._update(dt);
     else if (this.state === 'dying') {
-      this.dyingTimer -= dt / this.slowmo;
-      this.slowmo += (1 - this.slowmo) * dt * 2;
+      this.dyingTimer -= raw;
+      if (this.hitStop > 0) { this.hitStop -= raw; if (this.hitStop <= 0) this.slowmo = 0.35; }
+      else this.slowmo += (1 - this.slowmo) * dt * 2;
       this.player.update(dt, 0, false);
       this.chaser.update(dt, this.player, 0, false);
       if (this.dyingTimer <= 0) this._afterDeath();
-    } else {
+    } else if (this.state !== 'paused') {
       this.player.update(dt, 0, false);
       this.chaser.update(dt, this.player, 0, false);
       this.track.coins.update(dt, this.player, false, this.player.z + 30);
     }
-    this.fx.update(dt);
-    this._updateCamera(dt);
-    this._render();
   }
 
   _update(dt) {
@@ -542,6 +606,24 @@ export class Game {
       this.emit('milestone', { lap, bonus });
     }
 
+    // beat the previous best distance (once per run)
+    const best = this.save.data.bestDistance;
+    if (best > 0 && !r.newBestDistance && this.distance > best) {
+      r.newBestDistance = true;
+      this.audio.mission();
+      this.emit('toast', 'NEW RECORD DISTANCE!');
+    }
+
+    // 'auto' quality: if the first 4 s of a run render under 28 fps, drop to low settings for this session
+    if (r.time >= 4 && !this._perfChecked) {
+      this._perfChecked = true;
+      if (this.quality === 'auto' && !this._perfDropped && this._perfWall > 0 && this._perfFrames / this._perfWall < 28) {
+        this._perfDropped = true;
+        this._applyQuality('low');
+        this.emit('toast', 'Performance mode');
+      }
+    }
+
     // same lane tracking
     r.sameLaneCur += dt; r.sameLane = Math.max(r.sameLane, r.sameLaneCur);
 
@@ -568,13 +650,17 @@ export class Game {
     p.groundY = this.track.groundHeight(p);
     p.update(dt, speed, true);
 
-    // landings
-    if (!wasGrounded && p.grounded) {
+    // landings (a buffered jump re-launches inside p.update, so it also counts as a landing)
+    if ((!wasGrounded && p.grounded) || p.bufferedJump) {
       this.audio.landing();
       this.fx.dust(p.x, p.y, p.z, 6);
       if (p.groundY > TRAIN_H - 0.5) {
         r.trainJumps++; this.save.addStat('trainJumps'); r.trainStreak++;
       } else r.trainStreak = 0;
+    }
+    if (p.bufferedJump) {
+      p.bufferedJump = false;
+      this.audio.jump(); r.jumps++; this.save.addStat('jumps'); if (!r.firstJump) r.firstJump = r.score; this.fx.dust(p.x, p.y, p.z + 0.3, 5);
     }
     // fell off a train? nothing special. Jetpack flame
     if (this.powerups.jetpack > 0 && p.flying) this.track.airCoins(p.z, p.flyAltitude);
@@ -606,7 +692,7 @@ export class Game {
         if (e.obstacle.type === 'tyre_stack') { r.bushes++; this.save.addStat('bushes'); } else if (e.obstacle.type === 'ranger') { r.rangers = (r.rangers || 0) + 1; this.save.addStat('rangers'); } else { r.signals++; this.save.addStat('signals'); }
         this.audio.stumble();
         this.camShake = 0.25;
-        const caught = this.chaser.stumble();
+        const caught = this._chaserStumble();
         p.stumble();
         this.emit('stumble');
         if (caught) { this._die('caught'); return; }
@@ -617,7 +703,7 @@ export class Game {
         r.trainBumps++; this.save.addStat('trainBumps');
         this.audio.stumble();
         this.camShake = 0.3;
-        const caught = this.chaser.stumble();
+        const caught = this._chaserStumble();
         p.bounceBack();
         p.stumble();
         this.emit('stumble');
@@ -644,10 +730,22 @@ export class Game {
     }
 
     // barrier dodge counting: barrier passed behind the player without hitting
+    const canCloseCall = this.invuln <= 0 && !p.flying;
     for (const o of this.track.obstacles) {
       if (o.kind === 'barrier' && !o.counted && o.zNear > p.z + 1.0 && o.lane === p.lane) {
         o.counted = true;
-        if (Math.abs(p.x - o.lane * LANE_W) < 1.2) { r.barriersDodged++; this.save.addStat('barriersDodged'); }
+        if (Math.abs(p.x - o.lane * LANE_W) < 1.2) {
+          r.barriersDodged++; this.save.addStat('barriersDodged');
+          // close call: barely cleared it in the air, or ducked under a gantry / teargas cloud
+          const overhang = !p.grounded && (p.y - o.yTop) < 0.35;
+          const ducked = p.rolling > 0 && (o.type === 'road_closed_gantry' || o.type === 'teargas');
+          if (canCloseCall && (overhang || ducked)) this._closeCall();
+        }
+      }
+      // close call: swerved out of this obstacle's lane just before reaching it
+      if (!o.passed && o.zNear > p.z && (o.kind === 'train' || o.kind === 'solid' || o.kind === 'barrier')) {
+        o.passed = true;
+        if (canCloseCall && o.lane === this._laneChangeFrom && o.lane !== p.targetLane && r.time - this._laneChangeAt < 0.3) this._closeCall();
       }
     }
 
@@ -665,12 +763,36 @@ export class Game {
     this._missionTick = (this._missionTick || 0) + dt;
     if (this._missionTick > 0.5) { this._missionTick = 0; this._checkMissions(); }
 
-    this.emit('hud', { score: Math.floor(r.score), coins: r.coins, multiplier: this.multiplier, powerups: this.powerups, hover: this.hoverTimer, speed, distance: this.distance, bubbles: this.bubbleCharge || 0 });
+    this.emit('hud', { score: Math.floor(r.score), coins: r.coins, multiplier: this.multiplier, powerups: this.powerups, hover: this.hoverTimer, speed, distance: this.distance, bubbles: this.bubbleCharge || 0, fast: this._speedPull() > 0.6 });
+  }
+
+  /** 0..1 how far along the base speed ramp we are (headstart / turbo can push it to 1). */
+  _speedPull() { return Math.max(0, Math.min(1, (this.speed - SPEED.start) / (SPEED.max - SPEED.start))); }
+
+  /** Rangers close in on a stumble — unless Guddu's shield eats the first one of the run. */
+  _chaserStumble() {
+    if (this.perk === 'shield' && !this.run.shieldUsed) { this.run.shieldUsed = true; this.emit('toast', 'GUDDU SHRUGS IT OFF'); return false; }
+    return this.chaser.stumble();
+  }
+
+  /** Near-miss reward. Throttled to one per 0.6 s of run time. */
+  _closeCall() {
+    const r = this.run;
+    if (r.time - this._lastCloseCall < 0.6) return;
+    this._lastCloseCall = r.time;
+    const p = this.player;
+    this.fx.sparks(p.x, p.y + 0.6, p.z);
+    this.camShake = Math.max(this.camShake, 0.12);
+    this.audio.whoosh();
+    r.score += 50 * this.multiplier;
+    r.closeCalls++; this.save.addStat('closeCalls');
+    this.emit('toast', 'CLOSE CALL +50');
   }
 
   _updateCamera(dt) {
     const p = this.player;
     const cam = this.camera;
+    const speedPull = this.state === 'running' ? this._speedPull() : 0;
     if (this.state === 'menu') {
       // slowly orbiting menu camera
       const t = this.time * 0.25;
@@ -686,18 +808,19 @@ export class Game {
     } else {
       const yFollow = p.flying ? p.y - 0.6 : Math.min(p.y, p.groundY + 0.6) * 0.9;
       this._camY = this._camY === undefined ? yFollow : this._camY + (yFollow - this._camY) * Math.min(1, dt * 5);
-      const speedPull = (this.speed - SPEED.start) / (SPEED.max - SPEED.start);
-      const target = new THREE.Vector3(p.x * 0.5, this._camY + 3.15 + speedPull * 0.2, p.z + 5.0 + speedPull * 0.5);
+      // speed reads as speed: camera drops, pulls back and widens as the run accelerates
+      const target = new THREE.Vector3(p.x * 0.5, this._camY + 3.15 - speedPull * 0.4, p.z + 5.0 + speedPull * 1.2);
       cam.position.lerp(target, Math.min(1, dt * 10));
-      if (this.camShake > 0) {
-        this.camShake -= dt;
-        cam.position.x += (Math.random() - 0.5) * this.camShake * 0.6;
-        cam.position.y += (Math.random() - 0.5) * this.camShake * 0.6;
-      }
       cam.lookAt(p.x * 0.5, this._camY + 1.05, p.z - 9);
     }
-    // widen the lens a little when going fast (turbo / jetpack / headstart)
-    const wantFov = (this.baseFov || 60) + ((this.state === 'running' && p.hover) ? 12 : (this.state === 'running' && (p.flying || this.speed > 40)) ? 7 : 0);
+    // shake applies in every state so the death hit lands too
+    if (this.camShake > 0) {
+      this.camShake -= dt;
+      cam.position.x += (Math.random() - 0.5) * this.camShake * 0.6;
+      cam.position.y += (Math.random() - 0.5) * this.camShake * 0.6;
+    }
+    // widen the lens with speed, and more when going fast (turbo / jetpack / headstart)
+    const wantFov = (this.baseFov || 60) + speedPull * 8 + ((this.state === 'running' && p.hover) ? 12 : (this.state === 'running' && (p.flying || this.speed > 40)) ? 7 : 0);
     if (Math.abs(cam.fov - wantFov) > 0.05) { cam.fov += (wantFov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
     this.sky.position.set(cam.position.x, 0, p.z);
     this.ground.position.z = p.z - 200;

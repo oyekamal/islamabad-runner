@@ -1,20 +1,30 @@
 // Headless gameplay harness.
-// node tools/play.js <outPrefix> [seconds=6] [w=450] [h=800] [mode=auto|menu|bot] [shots=4]
+// node tools/play.js <outPrefix> [seconds=6] [w=450] [h=800] [mode=auto|menu|bot|crash|soak|ui|video] [shots=4]
+// mode=video records a webm of the bot playing for `seconds` seconds, saved to <outPrefix>.webm
 import { chromium } from 'playwright';
+import { rename } from 'node:fs/promises';
+import { dirname } from 'node:path';
 (async () => {
   const [, , prefix = 'shots/play', seconds = '6', w = '450', h = '800', mode = 'auto', shots = '4'] = process.argv;
   const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    executablePath: process.env.CHROME || undefined,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'],
   });
-  const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  const videoDir = dirname(`${prefix}.webm`) || 'shots';
+  const context = mode === 'video'
+    ? await browser.newContext({
+        viewport: { width: +w, height: +h }, deviceScaleFactor: 1, hasTouch: true, isMobile: true,
+        recordVideo: { dir: videoDir, size: { width: +w, height: +h } },
+      })
+    : null;
+  const page = context ? await context.newPage() : await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const logs = [];
   page.on('console', (m) => { if (m.type() !== 'debug' && m.type() !== 'log') logs.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')));
   const url = (process.env.BASE || 'http://localhost:5173/') + (mode === 'menu' ? '' : '?auto=1' + (process.env.Q || ''));
   await page.goto(url, { waitUntil: 'load' });
   try { await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 }); } catch (e) { logs.push('timeout waiting ready'); }
-  if (mode === 'bot') {
+  if (mode === 'bot' || mode === 'video') {
     await page.evaluate(() => {
       // a simple reflex bot: looks 12 m ahead in its lane and reacts
       const g = window.__game;
@@ -26,10 +36,10 @@ import { chromium } from 'playwright';
         const o = ahead(lane);
         if (!o) return;
         const dist = p.z - o.zNear;
-        if (dist > 9) return;
+        if (dist > 7.5) return;
         const free = (l) => Math.abs(l) <= 1 && !ahead(l);
         if (o.kind === 'barrier') {
-          if (o.type === 'barrier_high') g._onInput('down');
+          if (o.type === 'road_closed_gantry' || o.type === 'teargas') g._onInput('down');
           else g._onInput('up');
         } else if (o.kind === 'stumble') g._onInput('up');
         else {
@@ -40,6 +50,20 @@ import { chromium } from 'playwright';
         }
       }, 120);
     });
+  }
+  if (mode === 'video') {
+    // just let the bot play for `seconds`, then flush the recording — no screenshot loop needed
+    await page.waitForTimeout(+seconds * 1000);
+    const info = await page.evaluate(() => { const g = window.__game; return g ? `state=${g.state} dist=${g.distance.toFixed(0)} score=${g.run ? g.run.score.toFixed(0) : '-'} fps=${g.fps.toFixed(0)}` : 'no game'; });
+    console.log(info);
+    console.log(logs.slice(0, 30).join('\n'));
+    const video = page.video();
+    await context.close(); // flushes the recording to disk
+    await browser.close();
+    const videoPath = await video.path();
+    await rename(videoPath, `${prefix}.webm`);
+    console.log(`video saved to ${prefix}.webm`);
+    return;
   }
   if (mode === 'crash') {
     // run straight until dead, then screenshot game over; then try revive
@@ -76,10 +100,10 @@ import { chromium } from 'playwright';
           return first;
         };
         const o = ahead(lane); if (!o) return;
-        const dist = p.z - o.zNear; if (dist > 9) return;
+        const dist = p.z - o.zNear; if (dist > 7.5) return;
         const free = (l) => Math.abs(l) <= 1 && !ahead(l);
-        if (o.kind === 'barrier') { if (o.type === 'barrier_high') g._onInput('down'); else if (dist < 6) g._onInput('up'); }
-        else if (o.kind === 'stumble') { if (dist < 6) g._onInput('up'); }
+        if (o.kind === 'barrier') { if (o.type === 'road_closed_gantry' || o.type === 'teargas') g._onInput('down'); else if (dist < 6.5) g._onInput('up'); }
+        else if (o.kind === 'stumble') { if (dist < 6.5) g._onInput('up'); }
         else { if (free(lane - 1)) g._onInput('left'); else if (free(lane + 1)) g._onInput('right'); else if (lane === 0) g._onInput(Math.random() < 0.5 ? 'left' : 'right'); else g._onInput(lane < 0 ? 'right' : 'left'); }
       }, 100);
     });

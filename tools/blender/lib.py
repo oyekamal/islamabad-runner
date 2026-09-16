@@ -13,6 +13,7 @@ import os
 import sys
 
 import bpy
+import bmesh
 from mathutils import Vector, Euler
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "public", "models")
@@ -545,6 +546,46 @@ def blob(name, radius, loc, material, jitter=0.18, subdiv=2, seed=0, scale=None)
         o.scale = Vector(scale)
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return _finish(o, name, material)
+
+
+def blade(name, points, widths, material, thickness=0.02, up=(0, 0, 1)):
+    """Flat tapering ribbon strip through `points` (a curved path, e.g. an arced palm
+    frond) with a per-point width in `widths`, solidified to a thin real volume so it
+    reads correctly from both sides without relying on a double-sided-material hack.
+    `points` and `widths` must be parallel lists of the same length (>=2)."""
+    up_v = Vector(up)
+    bm = bmesh.new()
+    verts_l, verts_r = [], []
+    n = len(points)
+    for i in range(n):
+        p = Vector(points[i])
+        if i == 0:
+            tangent = (Vector(points[1]) - p)
+        elif i == n - 1:
+            tangent = (p - Vector(points[i - 1]))
+        else:
+            tangent = (Vector(points[i + 1]) - Vector(points[i - 1]))
+        tangent = tangent.normalized() if tangent.length > 1e-6 else Vector((1, 0, 0))
+        side = tangent.cross(up_v)
+        if side.length < 1e-6:
+            side = Vector((1, 0, 0))
+        side = side.normalized() * (widths[i] * 0.5)
+        verts_l.append(bm.verts.new(p - side))
+        verts_r.append(bm.verts.new(p + side))
+    for i in range(n - 1):
+        bm.faces.new((verts_l[i], verts_r[i], verts_r[i + 1], verts_l[i + 1]))
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    if thickness > 0:
+        mod = obj.modifiers.new("Solidify", 'SOLIDIFY')
+        mod.thickness = thickness
+        mod.offset = 0
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    return _finish(obj, name, material)
 
 
 def text_mesh(body, size, loc, material, rot=(90, 0, 0), extrude=0.02):

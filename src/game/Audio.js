@@ -43,7 +43,16 @@ export class Audio {
   }
 
   // ------------------------------------------------------------------ SFX
-  coin() { if (!this.sfxEnabled) return; const t = this.ctx.currentTime; this._osc('square', 1320, t, 0.08, 0.12); this._osc('square', 1760, t + 0.06, 0.12, 0.12); }
+  coin() {
+    if (!this.sfxEnabled) return;
+    const t = this.ctx.currentTime;
+    // pitch ramps up with a streak of quick pickups; resets after 0.6 s of silence
+    this._coinStreak = (t - (this._lastCoin || -10) > 0.6) ? 0 : (this._coinStreak || 0) + 1;
+    this._lastCoin = t;
+    const k = 1 + Math.min(this._coinStreak, 12) * 0.04;
+    this._osc('square', 1320 * k, t, 0.08, 0.12); this._osc('square', 1760 * k, t + 0.06, 0.12, 0.12);
+  }
+  whoosh() { if (!this.sfxEnabled) return; const t = this.ctx.currentTime; this._noise(t, 0.12, 0.16, 2500); }
   jump() { if (!this.sfxEnabled) return; const t = this.ctx.currentTime; this._noise(t, 0.18, 0.12, 600); this._osc('sine', 300, t, 0.2, 0.15, 700); }
   roll() { if (!this.sfxEnabled) return; const t = this.ctx.currentTime; this._noise(t, 0.25, 0.18, 300); }
   swipe() { if (!this.sfxEnabled) return; const t = this.ctx.currentTime; this._noise(t, 0.1, 0.06, 1500); }

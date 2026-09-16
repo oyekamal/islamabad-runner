@@ -34,6 +34,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # Must run before "Sync Capacitor": `npm run build` = `vite build && node tools/precache.mjs`,
+      # so dist/sw.js is precache-rewritten with the current file list before cap copies dist/ into android/.
       - name: Build web app
         run: npm run build
 

@@ -58,8 +58,10 @@ export class Track {
     this.pendingMovers = [];
     this.tunnelActive = false;
     this.airCoinZ = undefined;
+    this.bestMarkerPlaced = false;
     this._generateBlock(true);
-    this._generateBlock(true);
+    if (startDistance === 0) { this._generateBlock(false, 1); this._generateBlock(false, 2); }
+    else this._generateBlock(true);
   }
 
   /** Distance (metres) at the near edge of the block being generated. */
@@ -175,13 +177,14 @@ export class Track {
   }
 
   // ------------------------------------------------------------------ generation
-  _generateBlock(safe) {
+  /** warm: 0 = normal, 1/2 = scripted warm-up blocks used at the start of a fresh run. */
+  _generateBlock(safe, warm = 0) {
     const zNear = this.genZ;
     const zFar = zNear - BLOCK_L;
     const zone = this.zone;
     const d = this.difficulty;
     const sprint = zone.id === 'dchowk';
-    const tunnel = !safe && !sprint && !this.tunnelActive && chance(0.10 + d * 0.06) && zone.id !== 'avenue';
+    const tunnel = !safe && !warm && !sprint && !this.tunnelActive && chance(0.10 + d * 0.06) && zone.id !== 'avenue';
     this.tunnelActive = tunnel;
 
     for (let i = 0; i < BLOCK_TILES; i++) {
@@ -191,9 +194,21 @@ export class Track {
       else this._sideScenery(zone.id, tz, i);
     }
 
+    // best-run marker: an overpass sign where the previous best distance ended (once per run)
+    const best = this.game.save.data.bestDistance || 0;
+    if (best > 0 && !this.bestMarkerPlaced && best >= this.blockDistance && best < this.blockDistance + BLOCK_L) {
+      this.bestMarkerPlaced = true;
+      this._decor('overpass_sign', 0, 0, zNear - (best - this.blockDistance));
+    }
+
     const plans = {};
+    const warmLane = warm === 2 ? pick([-1, 1]) : null;
     if (safe) {
       plans[-1] = plans[0] = plans[1] = 'free';
+    } else if (warm === 1) {
+      plans[-1] = plans[1] = 'free'; plans[0] = 'barriers';
+    } else if (warm === 2) {
+      plans[-1] = plans[1] = 'free'; plans[0] = 'train'; plans[warmLane] = 'barriers';
     } else {
       const freeLane = pick([-1, 0, 1]);
       for (const lane of [-1, 0, 1]) {
@@ -220,6 +235,27 @@ export class Track {
       const continueTrain = this.prevPlans[lane] === 'train' && this.prevTrainEnd[lane] !== null &&
         Math.abs(this.prevTrainEnd[lane] - zNear) < 0.01;
       this.prevTrainEnd[lane] = null;
+      if (warm === 1 && lane === 0) {
+        // block 1: a single barricade in the centre lane with its coin arc, other lanes free
+        const z = zNear - 20;
+        this._barrier('police_barricade', 0, z);
+        this._coinLine(0, z + 4.5, 6, 0.9, 1.5, { z, half: 3.2, h: 1.6 });
+        continue;
+      }
+      if (warm === 2 && lane === 0) {
+        // block 2: dirt ramp onto a container train in the centre lane
+        let z = zNear - 8;
+        const rampMesh = this._place('dirt_ramp', 0, 0, z);
+        this._obstacle('ramp', 'ramp', 0, z, RAMP_L, 0, TRAIN_H, rampMesh);
+        z -= RAMP_L;
+        const coaches = Math.floor((z - zFar) / TILE_L);
+        const meshes = [];
+        for (let i = 0; i < coaches; i++) meshes.push(this._place('container_' + Math.floor(Math.random() * 6), 0, 0, z - i * TILE_L));
+        this._obstacle('train', 'container_0', 0, z, coaches * TILE_L, 0, TRAIN_H, meshes[0], { meshes });
+        this._coinLine(0, z - 2, Math.min(12, Math.floor((coaches * TILE_L - 3) / 1.7)), TRAIN_H + 0.9);
+        continue;
+      }
+      if (warm === 2 && lane === warmLane) { this._barrier('police_barricade', lane, zNear - 30); this._planFree(lane, zNear, zFar, d); continue; }
       switch (plan) {
         case 'free': this._planFree(lane, zNear, zFar, d); break;
         case 'barriers': this._planBarriers(lane, zNear, zFar, d, zone.id); break;
@@ -231,7 +267,7 @@ export class Track {
     }
     this.prevPlans2 = this.prevPlans;
     this.prevPlans = plans;
-    if (!safe) this._pickupsForBlock(plans, zNear, zFar);
+    if (!safe && !warm) this._pickupsForBlock(plans, zNear, zFar);
 
     this.genZ = zFar;
     this.blockIndex++;
@@ -374,12 +410,13 @@ export class Track {
       const z = zNear - rnd(6, 50);
       const r = Math.random();
       let kind;
-      if (r < 0.22) kind = 'jetpack';
-      else if (r < 0.44) kind = 'sneakers';
-      else if (r < 0.66) kind = 'magnet';
-      else if (r < 0.88) kind = 'multiplier';
-      else if (r < 0.95) kind = 'biryani';
-      else kind = 'key';
+      if (r < 0.21) kind = 'jetpack';
+      else if (r < 0.42) kind = 'sneakers';
+      else if (r < 0.63) kind = 'magnet';
+      else if (r < 0.84) kind = 'multiplier';
+      else if (r < 0.91) kind = 'biryani';
+      else if (r < 0.96) kind = 'key';
+      else kind = 'token';
       if (!this._spotBlocked(lane, z)) this._pickup(kind, lane, z);
     }
     if (this.sinceBubble > rnd(90, 170)) {
@@ -388,13 +425,12 @@ export class Track {
       const z = zNear - rnd(6, 50);
       if (!this._spotBlocked(lane, z)) this._pickup('msg_bubble', lane, z);
     }
-    if (this.sinceLetter > 380 && this.game.dailyWord) {
+    if (this.sinceLetter > 150 && this.game.dailyWord) {
       const idx = this.game.dailyLettersCollected;
       if (idx < this.game.dailyWord.length) {
-        this.sinceLetter = 0;
         const lane = pick(freeLanes);
         const z = zNear - rnd(6, 50);
-        if (!this._spotBlocked(lane, z)) this._pickup('letter', lane, z, this.game.dailyWord[idx]);
+        if (!this._spotBlocked(lane, z)) { this.sinceLetter = 0; this._pickup('letter', lane, z, this.game.dailyWord[idx]); }
       }
     }
   }
@@ -406,9 +442,26 @@ export class Track {
   }
 
   _pickup(kind, lane, z, letter = null) {
-    const mesh = kind === 'letter' ? this._letterMesh(letter) : this._place(kind, lane * LANE_W, 1.1, z);
+    const mesh = kind === 'letter' ? this._letterMesh(letter) : kind === 'token' ? this._tokenMesh() : this._place(kind, lane * LANE_W, 1.1, z);
     mesh.position.set(lane * LANE_W, 1.1, z);
     this.pickups.push({ kind, letter, x: lane * LANE_W, y: 1.1, z, mesh, lane });
+  }
+
+  /** Biryani-box token: a smaller, purple-tinted key. Registered as a synthetic prop so the pool can recycle it. */
+  _tokenMesh() {
+    if (!this.assets.props.token) {
+      const k = this.assets.prop('key');
+      k.scale.setScalar(0.8);
+      k.traverse((o) => {
+        if (!o.isMesh) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const out = mats.map((m) => { const c = m.clone(); c.color.set(0x7b3fe4); return c; });
+        o.material = Array.isArray(o.material) ? out : out[0];
+      });
+      const g = new THREE.Group(); g.add(k); g.name = 'token';
+      this.assets.props.token = g;
+    }
+    return this.pool.acquire('token');
   }
 
   _letterMesh(letter) {
@@ -440,12 +493,38 @@ export class Track {
     this._decor(pick(names), s * rnd(13.5, 17), 0, tz - 3, s > 0 ? -Math.PI / 2 : Math.PI / 2, scaleY ? [1, scaleY, 1] : null);
   }
 
+  /** One landmark per zone per lap, placed on the first tile of a fixed block inside the zone. */
+  _landmark(zoneId, tz, i) {
+    if (i !== 0) return;
+    const inZone = this.blockDistance % ZONE_LENGTH;
+    const s = pick([-1, 1]);
+    const face = s > 0 ? -Math.PI / 2 : Math.PI / 2;
+    switch (zoneId) {
+      case 'avenue':
+        if (inZone === 300) this._decor('landmark_faisal', s * 26, 0, tz - 12, face);
+        if (inZone === 540) this._decor('landmark_metro_bridge', 0, 0, tz - 6);
+        break;
+      case 'chokepoint':
+        if (inZone % 180 === 0) for (const ss of [-1, 1]) this._decor('landmark_container_wall', ss * 7.6, 0, tz - 6);
+        if (inZone === 1200) this._decor('landmark_metro_bridge', 0, 0, tz - 6);
+        break;
+      case 'redzone':
+        if (inZone === 1860) this._decor('landmark_monument', s * 15, 0, tz - 8, face);
+        if (inZone === 2280) this._decor('landmark_parliament', s * 19, 0, tz - 16, face);
+        break;
+      case 'dchowk':
+        if (inZone === 2940) this._decor('landmark_dchowk_gate', 0, 0, tz - BLOCK_L + 1);   // ride under it exactly at 3000 m
+        break;
+    }
+  }
+
   _sideScenery(zoneId, tz, i) {
     const both = [-1, 1];
+    this._landmark(zoneId, tz, i);
     const streetProp = (s, z) => this._decor(pick(['dhaba', 'rickshaw', 'bench', 'bench', 'tree', 'palm']), s * rnd(8.2, 10.5), 0, z, s > 0 ? Math.PI / 2 : -Math.PI / 2);
     switch (zoneId) {
       case 'avenue':
-        for (const s of both) { const palm = chance(0.35); this._decor(palm ? 'palm' : 'tree', s * (palm ? rnd(5.6, 6.2) : rnd(4.6, 5.4)), 0, tz - rnd(1, 9)); }
+        for (const s of both) { const r = Math.random(); const name = r < 0.35 ? 'palm' : r < 0.6 ? 'tree_pipal' : 'tree'; this._decor(name, s * (name === 'palm' ? rnd(5.6, 6.2) : rnd(4.8, 5.6)), 0, tz - rnd(1, 9)); }
         if (i % 2 === 1) for (const s of both) this._decor('lamp_post', s * 6.4, 0, tz - 4, s > 0 ? Math.PI : 0);
         if (i === 2) this._building(pick(both), tz);
         if (i === 3 && chance(0.7)) streetProp(pick(both), tz - 4);
@@ -470,7 +549,7 @@ export class Track {
         if (i === 2 && chance(0.6)) { const s = pick(both); this._decor('police_van', s * 6.0, 0, tz - 2, s > 0 ? Math.PI : 0); }
         break;
       case 'dchowk':
-        for (const s of both) this._decor('tree', s * rnd(4.6, 5.4), 0, tz - rnd(1, 9));
+        for (const s of both) this._decor(chance(0.4) ? 'tree_pipal' : 'tree', s * rnd(4.6, 5.4), 0, tz - rnd(1, 9));
         if (i % 2 === 0) for (const s of both) this._decor('flag_pole', s * 6.6, 0, tz - 3);
         if (i === 1) for (const s of both) this._decor('lamp_post', s * 6.4, 0, tz - 6, s > 0 ? Math.PI : 0);
         if (i === 2) this._decor('metro_station', 7.4, 0, tz, 0);

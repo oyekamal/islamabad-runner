@@ -12,8 +12,8 @@ export const PLAYER = {
   rollHeight: 1.35,
   depth: 1.6,
   laneChangeTime: 0.16,
-  jumpVel: 10.0,
-  superJumpVel: 14.5,
+  jumpVel: 11.2,
+  superJumpVel: 15.5,
   gravity: 30,
   fastFallGravity: 90,
   rollTime: 0.62,
@@ -21,14 +21,14 @@ export const PLAYER = {
 };
 
 export const SPEED = {
-  start: 12.5,
-  max: 31,
-  perMetre: 0.0062,      // how fast we accelerate with distance
+  start: 15,
+  max: 36,
+  perMetre: 0.0045,      // how fast we accelerate with distance
   headstart: 70,
   hoverMultiplier: 1.0,
 };
 
-export const SCORE_PER_METRE = 2;
+export const SCORE_PER_METRE = 10;
 
 export const POWERUP_BASE_DURATION = { jetpack: 10, sneakers: 10, magnet: 10, multiplier: 10 };
 export const POWERUP_UPGRADE_STEP = 5;   // seconds per upgrade level
