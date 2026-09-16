@@ -43,7 +43,7 @@ export const MYSTERY_BOX_COST = 500;
 export const REVIVE_KEYS = [1, 2, 4, 8, 16];
 
 export const CHASER = {
-  farDist: 5.2,      // camera sits ~9 m back and 4.4 m up, so rangers at 4.8 m show head-and-shoulders at the bottom of frame
+  farDist: 11,       // past the 9.2 m camera: rangers leave frame during clean running (like Subway Surfers) and close in on a stumble
   nearDist: 3.0,
   startDist: 4.2,
   nearTime: 5.0,

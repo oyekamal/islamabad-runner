@@ -60,8 +60,7 @@ export class Track {
     this.airCoinZ = undefined;
     this.bestMarkerPlaced = false;
     this._generateBlock(true);
-    if (startDistance === 0) { this._generateBlock(false, 1); this._generateBlock(false, 2); }
-    else this._generateBlock(true);
+    this._generateBlock(false, 1); this._generateBlock(false, 2);   // scripted warm-up from any start distance
   }
 
   /** Distance (metres) at the near edge of the block being generated. */
@@ -237,7 +236,7 @@ export class Track {
       this.prevTrainEnd[lane] = null;
       if (warm === 1 && lane === 0) {
         // block 1: a single barricade in the centre lane with its coin arc, other lanes free
-        const z = zNear - 20;
+        const z = zNear - 10;   // first dodge at ~70 m ≈ 4.5 s
         this._barrier('police_barricade', 0, z);
         this._coinLine(0, z + 4.5, 6, 0.9, 1.5, { z, half: 3.2, h: 1.6 });
         continue;

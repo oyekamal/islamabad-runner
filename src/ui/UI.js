@@ -96,7 +96,7 @@ export class UI {
     game.on('letter', ({ letter }) => { this.toast(`LETTER ${letter}!`); this._renderLetters(); });
     game.on('missionComplete', (m) => this.toast(`<b>MISSION COMPLETE</b>${m.text}`, 'mission'));
     game.on('missionSetComplete', ({ multiplier }) => this.toast(`<b>MISSION SET DONE</b>Multiplier is now x${multiplier}!`, 'mission'));
-    game.on('dying', () => { if (this.hud) { const st = h('<div class="arrest-stamp">ARRESTED</div>'); this.hud.appendChild(st); setTimeout(() => st.remove(), 1700); } });
+    game.on('dying', () => { if (this.hud) { const st = h('<div class="arrest-stamp">ARRESTED</div>'); this.hud.appendChild(st); setTimeout(() => st.remove(), 2300); } });
     game.on('gameOver', (d) => this.showGameOver(d));
     game.on('paused', () => this.showPause());
     game.on('resumed', () => this.showHUD());

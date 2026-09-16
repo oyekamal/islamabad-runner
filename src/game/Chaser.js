@@ -80,6 +80,6 @@ export class Chaser {
     const ts = running ? 0.9 + speed / 22 : 1;
     if (this.a.current) this.a.current.timeScale = ts;
     if (this.b.current) this.b.current.timeScale = ts * 1.05;
-    this.group.visible = this.dist < 14.5;
+    this.group.visible = this.dist < 14.5 && !player.flying;   // no floor-level blob under a jetpacking rider
   }
 }
