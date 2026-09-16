@@ -230,7 +230,7 @@ export class Game {
     this.invuln = 0;
     this.reviveCount = 0;
     this.slowmo = 1;
-    this.bubbleCharge = 0;
+    this.bubbleCharge = s.bubbleCharge || 0;   // signal charge survives death
     this.run = {
       score: 0, coins: 0, jumps: 0, rolls: 0, powerups: 0, sneakers: 0, magnets: 0, jetpacks: 0, multipliers: 0, boxes: 0, keys: 0,
       barriersDodged: 0, stumbles: 0, hoverboards: 0, hoverNoCrash: 0, trainBumps: 0, trainJumps: 0, trainStreak: 0, letters: 0,
@@ -281,7 +281,8 @@ export class Game {
     this.camShake = 0.6;
     this.slowmo = 0.02; this.hitStop = 0.08;   // hit-stop, then 0.35 slow-mo (see _tick)
     this.fx.crash(this.player.x, this.player.y + 1, this.player.z);
-    if (this.run.time < 10) this.run.earlyCaught = 1;
+    if (this.run.time < 10) { this.run.earlyCaught = 1; this.save.addStat('earlyCaught'); }
+    this.emit('dying', cause);
     this.deathCause = cause;
     this.dyingTimer = 1.6;
     if (navigator.vibrate && this.save.data.settings.haptics) navigator.vibrate(120);
@@ -290,7 +291,7 @@ export class Game {
   /** Cost of the next revive: keys, or the coin equivalent. */
   reviveCost() {
     const keysNeeded = REVIVE_KEYS[Math.min(this.reviveCount, REVIVE_KEYS.length - 1)];
-    return { keysNeeded, coinsNeeded: keysNeeded * 400 };
+    return { keysNeeded, coinsNeeded: 120 * Math.pow(2, this.reviveCount) };
   }
 
   _afterDeath() {
@@ -434,6 +435,7 @@ export class Game {
       if (this.bubbleCharge >= BUBBLES_PER_TURBO) {
         this.bubbleCharge = 0; s.hoverboards++; this.emit('toast', 'SIGNAL FULL — +1 TURBO!');
       } else this.emit('toast', `SIGNAL ${this.bubbleCharge}/${BUBBLES_PER_TURBO}`);
+      s.bubbleCharge = this.bubbleCharge;
       this.emit('bubbles', this.bubbleCharge);
     } else if (kind === 'biryani') {
       this.run.boxes++; this.save.addStat('boxes');
@@ -507,6 +509,7 @@ export class Game {
     if (!r) return 0;
     switch (stat) {
       case 'score': return Math.floor(r.score);
+      case 'distance': return Math.floor(this.distance);
       case 'noCoinScore': return Math.floor(r.coins > 0 ? (r.firstCoin || 0) : r.score);
       case 'noJumpScore': return Math.floor(r.jumps > 0 ? (r.firstJump || 0) : r.score);
       case 'noRollScore': return Math.floor(r.rolls > 0 ? (r.firstRoll || 0) : r.score);
@@ -809,9 +812,9 @@ export class Game {
       const yFollow = p.flying ? p.y - 0.6 : Math.min(p.y, p.groundY + 0.6) * 0.9;
       this._camY = this._camY === undefined ? yFollow : this._camY + (yFollow - this._camY) * Math.min(1, dt * 5);
       // speed reads as speed: camera drops, pulls back and widens as the run accelerates
-      const target = new THREE.Vector3(p.x * 0.5, this._camY + 3.15 - speedPull * 0.4, p.z + 5.0 + speedPull * 1.2);
+      const target = new THREE.Vector3(p.x * 0.5, this._camY + 4.4 - speedPull * 0.4, p.z + 9.2 + speedPull * 1.2);   // far enough back that the rangers stay in frame
       cam.position.lerp(target, Math.min(1, dt * 10));
-      cam.lookAt(p.x * 0.5, this._camY + 1.05, p.z - 9);
+      cam.lookAt(p.x * 0.5, this._camY + 0.7, p.z - 8);
     }
     // shake applies in every state so the death hit lands too
     if (this.camShake > 0) {

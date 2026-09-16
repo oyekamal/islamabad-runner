@@ -26,6 +26,8 @@ const DEFAULTS = () => ({
   leaderboard: [],             // [{score, coins, distance, date, character}]
   tutorialDone: false,
   achievementsDone: [],        // ids from data/achievements.js already awarded
+  bubbleCharge: 0,
+  lastLogin: '',               // local date of the last daily login gift
 });
 
 export class Save {

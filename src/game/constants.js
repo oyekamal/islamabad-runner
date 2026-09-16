@@ -23,7 +23,7 @@ export const PLAYER = {
 export const SPEED = {
   start: 15,
   max: 36,
-  perMetre: 0.0045,      // how fast we accelerate with distance
+  perMetre: 0.0055,      // how fast we accelerate with distance
   headstart: 70,
   hoverMultiplier: 1.0,
 };
@@ -43,9 +43,9 @@ export const MYSTERY_BOX_COST = 500;
 export const REVIVE_KEYS = [1, 2, 4, 8, 16];
 
 export const CHASER = {
-  farDist: 15,
-  nearDist: 4.6,
-  startDist: 6.0,
+  farDist: 5.2,      // camera sits ~9 m back and 4.4 m up, so rangers at 4.8 m show head-and-shoulders at the bottom of frame
+  nearDist: 3.0,
+  startDist: 4.2,
   nearTime: 5.0,
 };
 

@@ -68,7 +68,7 @@ export class Track {
   get blockDistance() { return this.blockIndex * BLOCK_L; }
   get zone() { return zoneAt(this.blockDistance); }
   get lap() { return Math.floor(this.blockDistance / ZONE_LENGTH); }
-  get difficulty() { return Math.min(1, (this.blockDistance % ZONE_LENGTH) / 2600 * 0.7 + this.lap * 0.25 + 0.15); }
+  get difficulty() { return Math.min(1, 0.15 + this.blockDistance / 3500 * 0.85); }   // monotonic: no reset at each 3000 m lap
 
   // ------------------------------------------------------------------ helpers
   _place(name, x, y, z, ry = 0, scale = null) {
@@ -275,8 +275,8 @@ export class Track {
 
   // -- lane plans -------------------------------------------------------------
   _planFree(lane, zNear, zFar, d) {
-    if (chance(0.7)) this._coinLine(lane, zNear - rnd(2, 12), Math.floor(rnd(6, 14)));
-    if (chance(0.3)) this._coinLine(lane, zNear - rnd(30, 40), Math.floor(rnd(4, 9)));
+    if (chance(0.75)) this._coinLine(lane, zNear - rnd(2, 12), Math.floor(rnd(10, 20)));
+    if (chance(0.4)) this._coinLine(lane, zNear - rnd(30, 42), Math.floor(rnd(6, 12)));
   }
 
   _planBarriers(lane, zNear, zFar, d, zoneId) {
@@ -292,7 +292,7 @@ export class Track {
       else type = 'barrier_mid';
       if (zoneId === 'avenue' && type === 'teargas') type = 'police_barricade';
       this._barrier(type, lane, z);
-      if (type === 'police_barricade' && chance(0.7)) this._coinLine(lane, z + 4.5, 6, 0.9, 1.5, { z, half: 3.2, h: 1.6 });
+      if (type === 'police_barricade' && chance(0.7)) this._coinLine(lane, z + 4.5, 8, 0.9, 1.5, { z, half: 3.2, h: 1.6 });
       else if (chance(0.6)) this._coinLine(lane, z - 3, 4, 0.9, 1.6);
       z -= rnd(minGap, minGap + 12);
     }
@@ -379,11 +379,11 @@ export class Track {
       if (r < 0.4) {
         const mesh = this._place('cones', lane * LANE_W, 0, z);
         this._obstacle('stumble', 'cones', lane, z + 0.4, 0.8, 0, 0.9, mesh);
-        if (chance(0.6)) this._coinLine(lane, z + 4, 6, 0.9, 1.5, { z, half: 3.0, h: 1.4 });
+        if (chance(0.6)) this._coinLine(lane, z + 4, 8, 0.9, 1.5, { z, half: 3.0, h: 1.4 });
       } else if (r < 0.65) {
         const mesh = this._place('tyre_stack', lane * LANE_W, 0, z);
         this._obstacle('stumble', 'tyre_stack', lane, z + 0.5, 1.0, 0, 0.7, mesh);
-        if (chance(0.6)) this._coinLine(lane, z + 4, 6, 0.9, 1.5, { z, half: 3.0, h: 1.4 });
+        if (chance(0.6)) this._coinLine(lane, z + 4, 8, 0.9, 1.5, { z, half: 3.0, h: 1.4 });
       } else {
         // a ranger standing in the lane: swerve or get knocked about
         const rg = this._acquireRanger();

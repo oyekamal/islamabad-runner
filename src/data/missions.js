@@ -8,15 +8,15 @@ const M = (text, stat, target, scope = 'total') => ({ text, stat, target, scope 
 export const MISSION_SETS = [
   // 1–6: onboarding, no paywalls
   [M('Collect 300 coins', 'coins', 300), M('Score 5,000 points in one run', 'score', 5000, 'run'), M('Jump 15 times', 'jumps', 15)],
-  [M('Collect 200 coins in one run', 'coins', 200, 'run'), M('Pick up 2 power-ups', 'powerups', 2), M('Collect 6 signal bubbles', 'bubbles', 6)],
-  [M('Jump 50 times', 'jumps', 50), M('Collect 12 signal bubbles', 'bubbles', 12), M('Collect 1,000 coins', 'coins', 1000)],
+  [M('Collect 120 coins in one run', 'coins', 120, 'run'), M('Pick up 2 power-ups', 'powerups', 2), M('Collect 6 signal bubbles', 'bubbles', 6)],
+  [M('Jump 50 times', 'jumps', 50), M('Collect 12 signal bubbles', 'bubbles', 12), M('Collect 600 coins', 'coins', 600)],
   [M('Roll 30 times in total', 'rolls', 30), M('Dodge 20 barricades', 'barriersDodged', 20), M('Score 15,000 points in one run', 'score', 15000, 'run')],
-  [M('Collect 2,500 coins', 'coins', 2500), M('Jump 30 times in one run', 'jumps', 30, 'run'), M('3 close calls in one run', 'closeCalls', 3, 'run')],
-  [M('Use 1 Turbo', 'hoverboards', 1), M('Reach D-Chowk once', 'dchowk', 1), M('Complete 1 Daily Word Hunt', 'daily', 1)],
+  [M('Collect 1,200 coins', 'coins', 1200), M('Jump 30 times in one run', 'jumps', 30, 'run'), M('3 close calls in one run', 'closeCalls', 3, 'run')],
+  [M('Use 1 Turbo', 'hoverboards', 1), M('Ride 1,500 m in one run', 'distance', 1500, 'run'), M('Complete 1 Daily Word Hunt', 'daily', 1)],
   // 7–11: mid game
   [M('Pick up 2 Jetpacks', 'jetpacks', 2), M('Score 50,000 points in one run', 'score', 50000, 'run'), M('5 close calls in one run', 'closeCalls', 5, 'run')],
   [M('Bump into 3 containers in one run', 'trainBumps', 3, 'run'), M('Pick up 40 coins with a Magnet', 'magnetCoins', 40), M('Get caught in the first 10 seconds', 'earlyCaught', 1)],
-  [M('Use 1 Turbo without crashing', 'hoverNoCrash', 1), M('Knock over 3 rangers', 'rangers', 3), M('Roll 30 times in one run', 'rolls', 30, 'run')],
+  [M('Use 1 Turbo without crashing', 'hoverNoCrash', 1), M('Reach D-Chowk once', 'dchowk', 1), M('Roll 30 times in one run', 'rolls', 30, 'run')],
   [M('Score 100,000 points in one run', 'score', 100000, 'run'), M('Pick up 12 power-ups', 'powerups', 12), M('Jump onto 2 containers', 'trainJumps', 2)],
   [M('Score 20,000 points without collecting coins', 'noCoinScore', 20000, 'run'), M('Roll 50 times in the centre lane', 'centerRolls', 50), M('Spend 2,000 coins', 'spent', 2000)],
   // 12+: economy missions allowed

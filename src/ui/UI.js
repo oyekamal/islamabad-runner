@@ -96,6 +96,7 @@ export class UI {
     game.on('letter', ({ letter }) => { this.toast(`LETTER ${letter}!`); this._renderLetters(); });
     game.on('missionComplete', (m) => this.toast(`<b>MISSION COMPLETE</b>${m.text}`, 'mission'));
     game.on('missionSetComplete', ({ multiplier }) => this.toast(`<b>MISSION SET DONE</b>Multiplier is now x${multiplier}!`, 'mission'));
+    game.on('dying', () => { if (this.hud) { const st = h('<div class="arrest-stamp">ARRESTED</div>'); this.hud.appendChild(st); setTimeout(() => st.remove(), 1700); } });
     game.on('gameOver', (d) => this.showGameOver(d));
     game.on('paused', () => this.showPause());
     game.on('resumed', () => this.showHUD());
@@ -148,6 +149,7 @@ export class UI {
   showMenu() {
     this.clear();
     const s = this.game.save.data;
+    this._dailyLogin(s);
     const char = this.game.characterDef();
     const missions = this.game.missionProgress();
     const missionsLeft = missions.filter((m) => !m.done).length;
@@ -247,6 +249,14 @@ export class UI {
     this.hud.querySelector('.hover-btn .n').textContent = '×' + this.game.save.data.hoverboards;
     const c = this.game.bubbleCharge || 0;
     this.hud.querySelector('.hover-btn .charge').textContent = '●'.repeat(c) + '○'.repeat(Math.max(0, BUBBLES_PER_TURBO - c));
+  }
+
+  /** Offline daily login gift: 100 coins the first time the menu is shown each local day. */
+  _dailyLogin(s) {
+    const d = new Date(); const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    if (s.lastLogin === today) return;
+    s.lastLogin = today; s.coins += 100; this.game.save.write();
+    (this._pendingToasts = this._pendingToasts || []).push(['<b>DAILY BONUS</b>+100 coins for showing up', 'mission']);
   }
 
   zoneBanner(z) {
@@ -369,7 +379,8 @@ export class UI {
     const causeText = { container: 'Straight into a shipping container!', jeep: 'Flattened by an army jeep!', pillar: 'Head first into an overpass pillar!', caught: 'The rangers grabbed you!',
       police_barricade: 'Tripped over a police barricade!', road_closed_gantry: 'Should have ducked under the sign!', teargas: 'Rode straight into the teargas!', barrier_mid: 'Tangled in police tape!' }[cause] || 'Caught!';
     const missions = g.missionProgress();
-    const canCoinRevive = !canRevive && typeof g.reviveWithCoins === 'function' && coinsNeeded > 0 && s.coins >= coinsNeeded;
+    const canCoinRevive = typeof g.reviveWithCoins === 'function' && coinsNeeded > 0 && s.coins >= coinsNeeded;
+    const perkBonus = g.characterDef().perk === 'coins' ? Math.ceil(run.coins * 0.1) : 0;
     const distLine = newBestDist
       ? '<div class="newbest dist">★ NEW BEST DISTANCE ★</div>'
       : (s.bestDistance > dist ? `<div class="small-note dist-short">${fmt(s.bestDistance - dist)} m short of your best distance</div>` : '');
@@ -380,7 +391,7 @@ export class UI {
       ${isBest ? '<div class="newbest">★ NEW HIGH SCORE ★</div>' : ''}
       <div class="stat-grid">
         <div class="stat"><div class="k">Score</div><div class="v" data-count="score">0</div></div>
-        <div class="stat"><div class="k">Coins</div><div class="v" data-count="coins">0</div></div>
+        <div class="stat"><div class="k">Coins</div><div class="v" data-count="coins">0</div>${perkBonus ? `<div class="k perk-bonus">+${perkBonus} ${g.characterDef().name} bonus</div>` : ''}</div>
         <div class="stat"><div class="k">Distance</div><div class="v">${fmt(dist)} m</div></div>
         <div class="stat"><div class="k">Multiplier</div><div class="v">x${mult}</div></div>
       </div>

@@ -202,3 +202,8 @@ button { font-family: var(--font); cursor: pointer; }
 .segb { border: 0; border-radius: 9px; padding: 6px 12px; font-weight: 900; font-size: 13px; text-transform: uppercase; background: transparent; color: #6b7280; }
 .segb.on { background: var(--teal); color: #fff; box-shadow: 0 2px 0 var(--teal-dark); }
 #menu .toasts { top: 27%; }
+
+/* arrest stamp: slams over the world during the death slow-mo, before the results panel */
+.arrest-stamp{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-8deg) scale(1.6);font-weight:900;font-size:64px;letter-spacing:.06em;color:#e0382b;-webkit-text-stroke:3px #fff;text-shadow:0 6px 0 rgba(0,0,0,.35);pointer-events:none;animation:stampIn .32s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes stampIn{from{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.6)}to{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}}
+.perk-bonus{color:#1fb2a6;font-weight:700;margin-top:2px}
