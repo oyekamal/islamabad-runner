@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const b = await chromium.launch({ headless: false, executablePath: process.env.CHROME, args: ['--no-sandbox', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+const b = await chromium.launch({ headless: false, executablePath: process.env.CHROME, args: ['--no-sandbox', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const page = await (await b.newContext({ viewport: { width: 450, height: 800 }, hasTouch: true, isMobile: true })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await page.goto('http://localhost:5199/?auto=1'); await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
@@ -11,10 +11,12 @@ await page.evaluate(() => { const g = window.__game; g.save.data.keys = 999; win
     const o = ahead(lane); if (!o) return; const d = p.z - o.zNear; if (d > 7.5) return; const free = (l) => Math.abs(l) <= 1 && !ahead(l);
     if (o.kind === 'barrier') { if (o.type === 'road_closed_gantry' || o.type === 'teargas') g._onInput('down'); else if (d < 6.5) g._onInput('up'); }
     else if (o.kind === 'stumble') { if (d < 6.5) g._onInput('up'); } else { if (free(lane - 1)) g._onInput('left'); else if (free(lane + 1)) g._onInput('right'); else g._onInput(lane <= 0 ? 'right' : 'left'); } }, 90); });
-const t0 = Date.now(); let n = 0;
+const t0 = Date.now(); let n = 0; let lastSt = ''; 
 while (Date.now() - t0 < 150000) {
   await page.waitForTimeout(300);
-  const st = await page.evaluate(() => window.__game.state);
+  await page.bringToFront();
+  const st = await page.evaluate(() => { const g = window.__game; if (g.state === 'paused') g.resume(); if (g.state === 'menu') { g.startRun(); window.__ui.showHUD(); } return g.state; });
+  if (st !== lastSt) { console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] state -> ${st}`); lastSt = st; }
   if (st === 'dead') {
     n++;
     const info = await page.evaluate(() => { const g = window.__game; const p = g.player; const near = g.track.obstacles.filter((o) => Math.abs(o.zNear - p.z) < 6 || (o.zNear > p.z && o.zFar < p.z)).map((o) => `${o.kind}/${o.type} lane=${o.lane} z=[${o.zNear.toFixed(1)},${o.zFar.toFixed(1)}] y=[${o.yBot},${o.yTop}]${o.moving ? ' MOVING' : ''}`);
