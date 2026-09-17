@@ -576,7 +576,10 @@ export class Track {
       if (o.kind !== 'train' && o.kind !== 'ramp') continue;
       if (o.moving) continue;
       if (b.maxX <= o.minX + 0.15 || b.minX >= o.maxX - 0.15) continue;
-      if (p.z > o.zNear || p.z < o.zFar) continue;
+      // trains: snap up as soon as the bike's FRONT edge reaches the roof (collide() also tests the front edge,
+      // so using the centre here let the bumper clip the container face at the top of every ramp)
+      const zRef = o.kind === 'train' ? p.z - PLAYER.depth / 2 : p.z;
+      if (zRef > o.zNear || p.z < o.zFar) continue;
       if (o.kind === 'ramp') {
         const t = (o.zNear - p.z) / o.length;
         const h = t * TRAIN_H;
