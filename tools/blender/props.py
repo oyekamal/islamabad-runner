@@ -716,30 +716,95 @@ def dirt_ramp():
     register(o, "dirt_ramp", tex="grime", uv_scale=1.5)
 
 
+def _prism(name, poly, y0, depth, material):
+    """Extrude a 2D polygon (list of (x, z)) along +Y from y0 by depth into a closed prism."""
+    import bmesh
+    bm = bmesh.new()
+    front = [bm.verts.new((x, y0, z)) for x, z in poly]
+    back = [bm.verts.new((x, y0 + depth, z)) for x, z in poly]
+    bm.faces.new(front[::-1])
+    bm.faces.new(back)
+    n = len(poly)
+    for i in range(n):
+        bm.faces.new((front[i], front[(i + 1) % n], back[(i + 1) % n], back[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    o.data.materials.append(material)
+    return o
+
+
+def _clip_x(poly, xmin, xmax):
+    """Sutherland-Hodgman clip of a convex (x, z) polygon to xmin <= x <= xmax."""
+    def clip(pts, inside, cross):
+        out = []
+        for i in range(len(pts)):
+            a, b = pts[i], pts[(i + 1) % len(pts)]
+            ia, ib = inside(a), inside(b)
+            if ia:
+                out.append(a)
+            if ia != ib:
+                out.append(cross(a, b))
+        return out
+    def cross_at(x):
+        def f(a, b):
+            t = (x - a[0]) / (b[0] - a[0])
+            return (x, a[1] + t * (b[1] - a[1]))
+        return f
+    poly = clip(poly, lambda p: p[0] >= xmin - 1e-9, cross_at(xmin))
+    poly = clip(poly, lambda p: p[0] <= xmax + 1e-9, cross_at(xmax))
+    return poly
+
+
+def _striped_bar(prefix, width, height, depth, zc, red, white, n=8, shear=0.7):
+    """Horizontal bar made of alternating red/white 45-degree parallelogram stripes."""
+    out = []
+    step = width / n
+    sh = height * shear
+    z0, z1 = zc - height / 2, zc + height / 2
+    xmin, xmax = -width / 2, width / 2
+    for i in range(-1, n + 1):
+        x0 = xmin + i * step
+        poly = [(x0, z0), (x0 + step, z0), (x0 + step + sh, z1), (x0 + sh, z1)]
+        poly = _clip_x(poly, xmin, xmax)
+        if len(poly) >= 3:
+            out.append(_prism(f"{prefix}_s{i}", poly, -depth / 2, depth, red if i % 2 == 0 else white))
+    return out
+
+
 def police_barricade():
-    """Low red/white police barricade with POLICE text - jump over."""
+    """Red/white diagonal-striped A-frame police barricade with a small blue POLICE plate - jump over.
+    Same footprint as before (TRAIN_W wide, ~1 m tall)."""
     red = mat("bar_red", "#e0382b")
     white = mat("bar_white", "#f7f7f7")
-    dark = mat("pr_dark", "#2b2b2b")
     blue = mat("police_blue", "#1f3a93")
     o = []
-    o.append(box("plank", (TRAIN_W, 0.14, 0.36), (0, 0, 0.78), white, bevel=0.02))
-    for i in range(4):
-        o.append(box("stripe", (0.24, 0.16, 0.38), (-0.75 + i * 0.5, 0, 0.78), red))
-    o.append(box("sign", (1.1, 0.06, 0.26), (0, -0.09, 0.78), blue))
-    bpy.ops.object.text_add(location=(0, -0.13, 0.78))
+    # two chunky striped bars
+    o += _striped_bar("bar_top", TRAIN_W, 0.24, 0.12, 0.84, red, white)
+    o += _striped_bar("bar_low", TRAIN_W, 0.20, 0.12, 0.44, red, white)
+    for sx in (-1, 1):
+        o.append(box("bar_cap", (0.05, 0.13, 0.26), (sx * (TRAIN_W / 2 - 0.02), 0, 0.84), white))
+        o.append(box("bar_cap2", (0.05, 0.13, 0.22), (sx * (TRAIN_W / 2 - 0.02), 0, 0.44), white))
+    # blue POLICE plate hanging under the top bar
+    o.append(box("sign", (0.90, 0.06, 0.22), (0, -0.05, 0.64), blue, bevel=0.01))
+    bpy.ops.object.text_add(location=(0, -0.085, 0.64))
     t = bpy.context.active_object
-    t.data.resolution_u = 3
-    t.data.body = "POLICE"; t.data.size = 0.22; t.data.extrude = 0.01; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
+    t.data.resolution_u = 2
+    t.data.body = "POLICE"; t.data.size = 0.17; t.data.extrude = 0.008; t.data.align_x = 'CENTER'; t.data.align_y = 'CENTER'
     t.rotation_euler = (math.radians(90), 0, 0)
     bpy.ops.object.convert(target='MESH'); t = bpy.context.active_object; t.name = "txt"; t.data.materials.append(white)
     o.append(t)
-    o.append(box("plank2", (TRAIN_W, 0.10, 0.12), (0, 0, 0.42), white))
+    # white A-frame legs at each end: two splayed struts + a foot bar + a top cap
     for sx in (-1, 1):
-        o.append(box("leg", (0.10, 0.10, 0.95), (sx * 0.92, 0, 0.48), dark))
-        o.append(box("foot", (0.20, 0.50, 0.06), (sx * 0.92, 0, 0.03), dark))
-    o.append(box("light", (0.18, 0.18, 0.12), (0, 0, 1.03), mat("amber", "#ffb300", emissive="#ffb300", emissive_strength=2.0)))
-    register(o, "police_barricade", tex="rust_metal", uv_scale=1.5)
+        x = sx * (TRAIN_W / 2 - 0.14)
+        for sy in (-1, 1):
+            o.append(beam("leg", (x, sy * 0.36, 0.03), (x, sy * 0.05, 1.02), 0.09, white, bevel=0.01))
+        o.append(box("foot", (0.12, 0.84, 0.06), (x, 0, 0.03), white, bevel=0.01))
+        o.append(box("apex", (0.12, 0.22, 0.08), (x, 0, 1.02), white, bevel=0.01))
+        o.append(box("brace", (0.09, 0.50, 0.05), (x, 0, 0.30), white))
+    register(o, "police_barricade", tex="plaster", uv_scale=1.5)
 
 
 def road_closed_gantry():
