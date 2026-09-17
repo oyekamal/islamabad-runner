@@ -148,6 +148,12 @@ export class Player {
     this.play('Stumble', 0.05);
   }
 
+  /** Land on a surface the ground check reports above the bike (roof reached mid-jump, ramp overtaking a jump). */
+  snapTo(g) {
+    this.y = this.groundY = g; this.vy = 0; this.grounded = true; this.jumping = false; this.fastFall = false;
+    if (this.rolling <= 0 && !this.dead) this.play(this.moveClip(), 0.08);
+  }
+
   bounceBack() {
     const from = Math.round(this.laneFrom);
     this.targetLane = from;
@@ -198,6 +204,7 @@ export class Player {
       if (!this.grounded) {
         this.vy -= g * dt;
         this.y += this.vy * dt;
+        if (this.y < this.groundY && this.vy > 0) this.y = this.groundY;   // rising into a roof groundHeight already reports: ride it, don't clip it
         if (this.y <= this.groundY && this.vy <= 0) {
           this.y = this.groundY;
           this.vy = 0;

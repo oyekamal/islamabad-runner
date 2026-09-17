@@ -216,12 +216,12 @@ export class Track {
         const prevTrain = this.prevPlans[lane] === 'train';
         const recentTrain = prevTrain || this.prevPlans2[lane] === 'train';
         if (sprint) {
-          plans[lane] = r < 0.35 ? 'barriers' : r < 0.5 ? 'stumble' : (r < 0.6 && !recentTrain) ? 'moving' : 'free';
+          plans[lane] = r < 0.35 ? 'barriers' : r < 0.5 ? 'stumble' : (r < 0.6 && !recentTrain && this.prevPlans[lane] === 'free') ? 'moving' : 'free';
         } else if (prevTrain && r < 0.55) plans[lane] = 'train';
         else if (r < 0.30 + d * 0.15) plans[lane] = 'train';
         else if (r < 0.48 + d * 0.15) plans[lane] = 'barriers';
         else if (r < 0.58 + d * 0.1 && lane === 0 && !tunnel) plans[lane] = 'pillar';
-        else if (r < 0.70 + d * 0.12 && !recentTrain) plans[lane] = 'moving';
+        else if (r < 0.70 + d * 0.12 && !recentTrain && this.prevPlans[lane] === 'free') plans[lane] = 'moving';
         else if (r < 0.82) plans[lane] = 'stumble';
         else plans[lane] = 'free';
       }
@@ -578,12 +578,13 @@ export class Track {
       if (b.maxX <= o.minX + 0.15 || b.minX >= o.maxX - 0.15) continue;
       // trains: snap up as soon as the bike's FRONT edge reaches the roof (collide() also tests the front edge,
       // so using the centre here let the bumper clip the container face at the top of every ramp)
-      const zRef = o.kind === 'train' ? p.z - PLAYER.depth / 2 : p.z;
-      if (zRef > o.zNear || p.z < o.zFar) continue;
+      // near end: the FRONT edge; far end: the REAR edge — the roof holds until the whole bike has left it
+      const half = o.kind === 'train' ? PLAYER.depth / 2 : 0;
+      if (p.z - half > o.zNear || p.z + half < o.zFar) continue;
       if (o.kind === 'ramp') {
         const t = (o.zNear - p.z) / o.length;
         const h = t * TRAIN_H;
-        if (p.y >= h - 0.6) g = Math.max(g, h);
+        if (p.y >= h - 0.6 || p.grounded) g = Math.max(g, h);
       } else if (p.y >= o.yTop - 0.45) {
         g = Math.max(g, o.yTop);
       }

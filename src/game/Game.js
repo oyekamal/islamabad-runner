@@ -261,7 +261,7 @@ export class Game {
   _activateHeadstart() {
     this.headstart = 4.5;
     this.player.setFlying(true, 5.5);
-    this.invuln = 5;
+    this.invuln = 5.4;   // 4.5 s flight + ~0.6 s fall
     this.audio.jetpack();
     this.emit('toast', 'HEADSTART!');
   }
@@ -330,7 +330,7 @@ export class Game {
     this.player.play('Ride', 0);
     this.player.setFlying(true, 5.5);
     this.headstart = 2.4;
-    this.invuln = 3.2;
+    this.invuln = 3.6;   // 2.4 s flight + fall
     this.chaser.reset(); this.chaser.startRun();
     this.slowmo = 1;
     this.state = 'running';
@@ -636,7 +636,7 @@ export class Game {
         this.powerups[k] -= dt;
         if (this.powerups[k] <= 0) {
           this.powerups[k] = 0;
-          if (k === 'jetpack' && this.headstart <= 0) p.setFlying(false);
+          if (k === 'jetpack' && this.headstart <= 0) { p.setFlying(false); this.invuln = Math.max(this.invuln, 0.8); }
           if (k === 'sneakers') p.superJump = false;
           this.emit('powerupEnd', k);
         }
@@ -654,7 +654,11 @@ export class Game {
     p.update(dt, speed, true);
     // re-sample the ground at the post-move position: at 36 m/s one step is 0.6 m, enough for the bumper to
     // enter a container roof before the pre-move sample saw it (collide() below uses the post-move bounds)
-    if (p.grounded && !p.flying) { const g2 = this.track.groundHeight(p); if (g2 > p.groundY) { p.groundY = g2; p.y = g2; p._sync(); } }
+    if (!p.flying && !p.dead) {
+      const g2 = this.track.groundHeight(p);
+      if (g2 > p.y + 1e-6) { const wasAir = !p.grounded; p.snapTo(g2); p._sync(); if (wasAir) { this.audio.landing(); this.fx.dust(p.x, p.y, p.z, 6); if (g2 > TRAIN_H - 0.5) { r.trainJumps++; this.save.addStat('trainJumps'); } } }
+      else if (p.grounded && g2 > p.groundY) { p.groundY = g2; p.y = g2; p._sync(); }
+    }
 
     // landings (a buffered jump re-launches inside p.update, so it also counts as a landing)
     if ((!wasGrounded && p.grounded) || p.bufferedJump) {
@@ -725,6 +729,8 @@ export class Game {
           r.hoverCrashed = true;
           this._endHoverboard(true);
           this.invuln = 1.6;
+          if (e.obstacle.kind === 'train' && !e.obstacle.moving) { p.y = p.groundY = e.obstacle.yTop; p.grounded = true; p.vy = 0; }   // hop onto the roof, don't run inside it
+          e.obstacle.counted = true;   // a crash is not a dodge
           this.camShake = 0.4;
           this.emit('toast', 'TURBO saved you!');
           continue;
@@ -751,7 +757,8 @@ export class Game {
       // close call: swerved out of this obstacle's lane just before reaching it
       if (!o.passed && o.zNear > p.z && (o.kind === 'train' || o.kind === 'solid' || o.kind === 'barrier')) {
         o.passed = true;
-        if (canCloseCall && o.lane === this._laneChangeFrom && o.lane !== p.targetLane && r.time - this._laneChangeAt < 0.3) this._closeCall();
+        const wasOnIt = o.kind === 'train' && p.y > o.yTop - 0.5;
+        if (canCloseCall && !wasOnIt && o.lane === this._laneChangeFrom && o.lane !== p.targetLane && r.time - this._laneChangeAt < 0.3) this._closeCall();
       }
     }
 
