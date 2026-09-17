@@ -652,6 +652,9 @@ export class Game {
     const prevGround = p.groundY;
     p.groundY = this.track.groundHeight(p);
     p.update(dt, speed, true);
+    // re-sample the ground at the post-move position: at 36 m/s one step is 0.6 m, enough for the bumper to
+    // enter a container roof before the pre-move sample saw it (collide() below uses the post-move bounds)
+    if (p.grounded && !p.flying) { const g2 = this.track.groundHeight(p); if (g2 > p.groundY) { p.groundY = g2; p.y = g2; p._sync(); } }
 
     // landings (a buffered jump re-launches inside p.update, so it also counts as a landing)
     if ((!wasGrounded && p.grounded) || p.bufferedJump) {
