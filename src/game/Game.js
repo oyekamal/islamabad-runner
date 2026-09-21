@@ -227,6 +227,7 @@ export class Game {
     this.distance = opts.startDistance || 0;
     this.powerups = {};
     this.hoverTimer = 0;
+    this.headstart = 0;   // was undefined on runs without a headstart: `undefined <= 0` is false, so the jetpack never landed
     this.invuln = 0;
     this.reviveCount = 0;
     this.slowmo = 1;
