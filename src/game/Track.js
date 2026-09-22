@@ -629,7 +629,11 @@ export class Track {
         else events.push({ type: 'death', obstacle: o, cause: o.moving ? 'jeep' : o.kind === 'solid' ? 'pillar' : 'container' });
         continue;
       }
-      if (o.kind === 'barrier') events.push({ type: 'death', obstacle: o, cause: o.type, onRoof });
+      if (o.kind === 'barrier') {
+        // teargas no longer ends the run — it leaves the rider reeling (see Game._gassed)
+        if (o.gas) { if (!o.hit) { o.hit = true; events.push({ type: 'gas', obstacle: o }); } continue; }
+        events.push({ type: 'death', obstacle: o, cause: o.type, onRoof });
+      }
     }
     const keep = [];
     for (const pk of this.pickups) {

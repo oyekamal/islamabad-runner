@@ -183,6 +183,10 @@ export class UI {
     game.on('coins', () => {});
     game.on('powerup', ({ kind, duration }) => { this.toast(PU_NAME[kind].toUpperCase() + '!'); this._ensureBar(kind, duration); });
     game.on('powerupEnd', (k) => this._removeBar(k));
+    game.on('dizzy', (secs) => this._setDizzy(true, secs));
+    game.on('dizzyEnd', () => this._setDizzy(false));
+    game.on('runStart', () => this._setDizzy(false));
+    game.on('revived', () => this._setDizzy(false));
     game.on('hoverboard', ({ time }) => this._ensureBar('hover', time));
     game.on('hoverboardEnd', () => this._removeBar('hover'));
     game.on('toast', (t) => this.toast(t));
@@ -437,6 +441,20 @@ export class UI {
       this.barsEl.appendChild(el);
       this.bars[kind] = { el, duration };
     } else this.bars[kind].duration = duration;
+  }
+
+  /** Teargas haze + a plain warning that steering is inverted, so the reversal reads as a rule, not a glitch. */
+  _setDizzy(on, secs = 0) {
+    let el = this.root.querySelector('.dizzy-fx');
+    if (on) {
+      if (!el) { el = h('<div class="dizzy-fx"><div class="dizzy-haze"></div><div class="dizzy-warn">😵‍💫 DIZZY — CONTROLS REVERSED</div></div>'); this.root.appendChild(el); }
+      el.style.setProperty('--dizzy-secs', `${secs}s`);
+      el.classList.remove('out');
+      void el.offsetWidth;
+    } else if (el) {
+      el.classList.add('out');
+      setTimeout(() => el && el.remove(), 400);
+    }
   }
 
   _removeBar(kind) { if (this.bars && this.bars[kind]) { this.bars[kind].el.remove(); delete this.bars[kind]; } }

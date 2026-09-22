@@ -14,6 +14,7 @@ const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a
 // Flight height. Must stay under the Metro bridge deck (slab 6.70-7.30 m; rider is +2.0 m
 // above this value) and over the tallest barrier (road_closed_gantry yTop 3.0).
 const FLY_ALTITUDE = 4.2;
+const DIZZY_TIME = 5;         // seconds of teargas wooziness (does not stack past this)
 const STEP = 1 / 60;          // fixed simulation substep
 const MAX_STEPS = 4;          // per rendered frame; anything beyond is dropped
 
@@ -62,6 +63,7 @@ export class Game {
     this.powerups = {};              // kind -> remaining seconds
     this.hoverTimer = 0;
     this.invuln = 0;
+    this.dizzy = 0;
     this.reviveCount = 0;
     this.dailyWord = this._dailyWord();
     this.dailyLettersCollected = this.save.data.daily.letters;
@@ -232,6 +234,7 @@ export class Game {
     this.hoverTimer = 0;
     this.headstart = 0;   // was undefined on runs without a headstart: `undefined <= 0` is false, so the jetpack never landed
     this.invuln = 0;
+    this.dizzy = 0;
     this.reviveCount = 0;
     this.slowmo = 1;
     this.bubbleCharge = s.bubbleCharge || 0;   // signal charge survives death
@@ -326,6 +329,7 @@ export class Game {
   }
 
   _doRevive() {
+    this.dizzy = 0;
     this.reviveCount++;
     this.save.write();
     // clear the immediate neighbourhood and lift the player
@@ -381,8 +385,8 @@ export class Game {
     if (this.state !== 'running') return;
     const p = this.player;
     switch (t) {
-      case 'left': if (p.moveLane(-1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
-      case 'right': if (p.moveLane(1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
+      case 'left': if (p.moveLane(this.dizzy > 0 ? 1 : -1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
+      case 'right': if (p.moveLane(this.dizzy > 0 ? -1 : 1)) { this.audio.swipe(); this.run.sameLaneCur = 0; this._laneChangeAt = this.run.time; this._laneChangeFrom = p.lane; } break;
       case 'up':
         if (p.jump()) { this.audio.jump(); this.run.jumps++; this.save.addStat('jumps'); if (!this.run.firstJump) this.run.firstJump = this.run.score; this.fx.dust(p.x, p.y, p.z + 0.3, 5); }
         break;
@@ -405,6 +409,20 @@ export class Game {
     this.audio.hover();
     this.emit('hoverboard', { time: this.hoverTimer });
     return true;
+  }
+
+  /** Rode into a teargas cloud. Never fatal — the rider just loses the plot for a few seconds. */
+  _gassed() {
+    const fresh = this.dizzy <= 0;
+    this.dizzy = DIZZY_TIME;                      // re-dosing refreshes, never stacks
+    this.run.gassed = (this.run.gassed || 0) + 1;
+    this.save.addStat('gassed');
+    this.camShake = Math.max(this.camShake, 0.45);
+    this.audio.stumble();
+    this.player.stumble();
+    if (navigator.vibrate && this.save.data.settings.haptics) navigator.vibrate(60);
+    this.emit('dizzy', DIZZY_TIME);
+    if (fresh) this.emit('toast', 'TEARGAS! STEERING IS ALL WRONG');
   }
 
   _endHoverboard(crashed) {
@@ -648,6 +666,7 @@ export class Game {
     }
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0) this._endHoverboard(false); }
     if (this.invuln > 0) this.invuln -= dt;
+    if (this.dizzy > 0) { this.dizzy -= dt; if (this.dizzy <= 0) { this.dizzy = 0; this.emit('dizzyEnd'); } }
 
     // world
     const prevZ = p.z + dz;
@@ -723,6 +742,10 @@ export class Game {
         p.stumble();
         this.emit('stumble');
         if (caught) { this._die('caught'); return; }
+        continue;
+      }
+      if (e.type === 'gas') {
+        if (!p.hover) this._gassed();             // Turbo blasts through the cloud
         continue;
       }
       if (e.type === 'death') {
@@ -830,6 +853,13 @@ export class Game {
       const target = new THREE.Vector3(p.x * 0.5, this._camY + 4.4 - speedPull * 0.4, p.z + 9.2 + speedPull * 1.2);   // far enough back that the rangers stay in frame
       cam.position.lerp(target, Math.min(1, dt * 10));
       cam.lookAt(p.x * 0.5, this._camY + 0.7, p.z - 8);
+    }
+    // teargas: the world tips and swims until it wears off
+    if (this.dizzy > 0) {
+      const t = this.time, f = Math.min(1, this.dizzy / DIZZY_TIME);
+      cam.position.x += Math.sin(t * 2.1) * 0.85 * f;
+      cam.position.y += Math.sin(t * 1.4 + 1) * 0.3 * f;
+      cam.rotateZ(Math.sin(t * 1.7) * 0.13 * f);
     }
     // shake applies in every state so the death hit lands too
     if (this.camShake > 0) {
