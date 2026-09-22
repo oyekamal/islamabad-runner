@@ -187,6 +187,9 @@ export class UI {
     game.on('dizzyEnd', () => this._setDizzy(false));
     game.on('runStart', () => this._setDizzy(false));
     game.on('revived', () => this._setDizzy(false));
+    game.on('dying', () => this._setDizzy(false));      // belt and braces: never let the haze reach a panel
+    game.on('gameOver', () => this._setDizzy(false));
+    game.on('menu', () => this._setDizzy(false));
     game.on('hoverboard', ({ time }) => this._ensureBar('hover', time));
     game.on('hoverboardEnd', () => this._removeBar('hover'));
     game.on('toast', (t) => this.toast(t));

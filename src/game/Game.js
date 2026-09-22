@@ -280,6 +280,7 @@ export class Game {
   _die(cause) {
     if (this.state !== 'running') return;
     this.state = 'dying';
+    this._clearDizzy();
     this.player.die();
     this.chaser.catchPlayer();
     this.audio.crash();
@@ -362,6 +363,7 @@ export class Game {
   }
 
   goToMenu() {
+    this._clearDizzy();
     if (this.run) this.finishRun();
     this.state = 'menu';
     this.audio.stopMusic();
@@ -423,6 +425,13 @@ export class Game {
     if (navigator.vibrate && this.save.data.settings.haptics) navigator.vibrate(60);
     this.emit('dizzy', DIZZY_TIME);
     if (fresh) this.emit('toast', 'TEARGAS! STEERING IS ALL WRONG');
+  }
+
+  /** Drop the teargas effect and tell the UI. The countdown only ticks while running, so anything that
+   *  leaves the running state (death, menu, new run, revive) has to clear it explicitly — otherwise the
+   *  haze and the "controls reversed" pill sit frozen on top of the game-over screen. */
+  _clearDizzy() {
+    if (this.dizzy > 0) { this.dizzy = 0; this.emit('dizzyEnd'); }
   }
 
   _endHoverboard(crashed) {
