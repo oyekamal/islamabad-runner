@@ -52,9 +52,14 @@ export class Track {
     this.prevPlans = { '-1': 'free', 0: 'free', 1: 'free' };
     this.prevPlans2 = { '-1': 'free', 0: 'free', 1: 'free' };
     this.prevTrainEnd = { '-1': null, 0: null, 1: null };
-    this.sincePickup = 0;
+    // Primed above the roll ceiling (rnd(130,240), max 240) so the FIRST _pickupsForBlock() call
+    // of a run (BLOCK_L=60 added immediately) already exceeds it and a pickup spawns inside the
+    // very first block (~0-60 m) instead of waiting 130-240 m — real bot deaths land at 15-69 m.
+    this.sincePickup = 200;
     this.sinceLetter = 0;
     this.sinceBubble = 0;
+    this.runStartDistance = startDistance;
+    this.keyGiven = false;   // guarantees ≥1 key pickup in the first 500 m of every run (see _pickupsForBlock)
     this.pendingMovers = [];
     this.tunnelActive = false;
     this.airCoinZ = undefined;
@@ -266,7 +271,12 @@ export class Track {
     }
     this.prevPlans2 = this.prevPlans;
     this.prevPlans = plans;
-    if (!safe && !warm) this._pickupsForBlock(plans, zNear, zFar);
+    // GAP A: pickups used to be skipped entirely on the scripted safe/warm-up blocks (0-180 m),
+    // so even with sincePickup primed above the roll ceiling, the first roll couldn't actually
+    // fire until block index 3 (180 m+) — long past where real bot deaths land (15-69 m). Block 0
+    // is fully obstacle-free ('safe' plan == all lanes 'free'), so including it here also makes
+    // the forced first-key roll placement-guaranteed, not just early.
+    this._pickupsForBlock(plans, zNear, zFar);
 
     this.genZ = zFar;
     this.blockIndex++;
@@ -416,7 +426,10 @@ export class Track {
       else if (r < 0.91) kind = 'biryani';
       else if (r < 0.96) kind = 'key';
       else kind = 'token';
-      if (!this._spotBlocked(lane, z)) this._pickup(kind, lane, z);
+      // First-run safety net: a key within 500 m gives a fresh player a real shot at the revive option
+      // instead of the "SAVE ME ⚷1 · you have 0" dead tease.
+      if (!this.keyGiven) kind = 'key';   // first pickup of every run is a key: warm-up blocks spawn none, so a distance window missed it
+      if (!this._spotBlocked(lane, z)) { this._pickup(kind, lane, z); if (kind === 'key') this.keyGiven = true; }
     }
     if (this.sinceBubble > rnd(90, 170)) {
       this.sinceBubble = 0;

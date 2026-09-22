@@ -11,6 +11,9 @@ import { CHARACTERS, BIKES } from '../data/characters.js';
 import { MISSION_SETS, MAX_MULTIPLIER, DAILY_WORDS, DAILY_REWARDS } from '../data/missions.js';
 
 const POWERUP_COLORS = { jetpack: 0xff4d2b, sneakers: 0xff3333, magnet: 0xff5a5a, multiplier: 0x3d8bff, biryani: 0xffb347, key: 0xffd53d, token: 0x7b3fe4, letter: 0xffffff, msg_bubble: 0x25a244 };
+// Flight height. Must stay under the Metro bridge deck (slab 6.70-7.30 m; rider is +2.0 m
+// above this value) and over the tallest barrier (road_closed_gantry yTop 3.0).
+const FLY_ALTITUDE = 4.2;
 const STEP = 1 / 60;          // fixed simulation substep
 const MAX_STEPS = 4;          // per rendered frame; anything beyond is dropped
 
@@ -261,7 +264,7 @@ export class Game {
 
   _activateHeadstart() {
     this.headstart = 4.5;
-    this.player.setFlying(true, 5.5);
+    this.player.setFlying(true, FLY_ALTITUDE);
     this.invuln = 5.4;   // 4.5 s flight + ~0.6 s fall
     this.audio.jetpack();
     this.emit('toast', 'HEADSTART!');
@@ -329,7 +332,7 @@ export class Game {
     this.player.dead = false;
     this.player.rolling = 0; this.player.stumbling = 0;
     this.player.play('Ride', 0);
-    this.player.setFlying(true, 5.5);
+    this.player.setFlying(true, FLY_ALTITUDE);
     this.headstart = 2.4;
     this.invuln = 3.6;   // 2.4 s flight + fall
     this.chaser.reset(); this.chaser.startRun();
@@ -347,7 +350,7 @@ export class Game {
     s.coins += banked;
     this.save.addStat('coins', banked);
     this.save.addStat('score', Math.floor(r.score));
-    this.save.addScore({ score: Math.floor(r.score), coins: r.coins, distance: Math.floor(this.distance), date: new Date().toISOString().slice(0, 10), character: s.character });
+    this.save.addScore({ score: Math.floor(r.score), coins: r.coins, distance: Math.floor(this.distance), date: new Date().toISOString().slice(0, 10), character: s.character, name: s.playerName || 'Guest' });
     this._checkMissions(true);
     this.save.write();
     this.emit('runFinished', r);
@@ -395,12 +398,12 @@ export class Game {
     if (this.save.data.hoverboards <= 0) { this.emit('toast', `No Turbo! Collect ${BUBBLES_PER_TURBO} signal bubbles or buy one in the shop.`); return false; }
     this.save.data.hoverboards--;
     this.save.write();
-    this.hoverTimer = HOVERBOARD_TIME;
+    this.hoverTimer = HOVERBOARD_TIME + (this.bikeDef().bonus === 'extraHover' ? 5 : 0);
     this.player.setHover(true);
     this.run.hoverboards++; this.save.addStat('hoverboards');
     this.run.hoverCrashed = false;
     this.audio.hover();
-    this.emit('hoverboard', { time: HOVERBOARD_TIME });
+    this.emit('hoverboard', { time: this.hoverTimer });
     return true;
   }
 
@@ -425,7 +428,7 @@ export class Game {
       if (!this.run.firstPowerup) this.run.firstPowerup = this.run.score;
       const statKey = { jetpack: 'jetpacks', sneakers: 'sneakers', magnet: 'magnets', multiplier: 'multipliers' }[kind];
       this.run[statKey]++; this.save.addStat(statKey);
-      if (kind === 'jetpack') { p.setFlying(true, 6.0); this.audio.jetpack(); }
+      if (kind === 'jetpack') { p.setFlying(true, FLY_ALTITUDE); this.audio.jetpack(); }
       else this.audio.powerup();
       if (kind === 'sneakers') p.superJump = true;
       this.emit('powerup', { kind, duration: dur });
@@ -685,7 +688,8 @@ export class Game {
     const got = this.track.coins.update(dt, p, magnet, p.z + 25);
     if (got.length) {
       for (const c of got) this.fx.coin(c.x, c.y, c.z);
-      r.coins += got.length;
+      const coinMult = (this.bikeDef().bonus === 'doubleCoins' && p.hover) ? 2 : 1;
+      r.coins += got.length * coinMult;
       if (magnet) { r.magnetCoins += got.length; this.save.addStat('magnetCoins', got.length); }
       if (!r.firstCoin) r.firstCoin = r.score;
       this.audio.coin();

@@ -14,6 +14,7 @@ export const PLAYER = {
   laneChangeTime: 0.16,
   jumpVel: 11.2,
   superJumpVel: 15.5,
+  bounceJumpVel: 14.6,   // Bouncer bike, during Turbo only — v^2 ratio gives ~+70% jump height over jumpVel
   gravity: 30,
   fastFallGravity: 90,
   rollTime: 0.62,

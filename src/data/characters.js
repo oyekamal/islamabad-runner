@@ -18,11 +18,15 @@ export const CHARACTERS = [
 ];
 
 // Bikes (the "hoverboard" catalogue): recolour the bike and change Turbo behaviour.
+// bonus: 'extraHover' | 'doubleCoins' | 'laneSpeed' | 'speed' | 'lowrider' | 'bouncer' — read by Game/Player; perkText is shown on shop cards.
+// shape: key into the bikeSVG geometry table in ui/UI.js — each bike gets its own silhouette
+// matching its description (upright classic / tall decorated panel / knobbly trail / low faired
+// speed / slammed lowrider / raised-suspension bouncer) instead of one shared outline.
 export const BIKES = [
-  { id: 'default', name: 'Seventy Classic', desc: 'The trusty red seventy. Never dies.', cost: 0, palette: { bike_body: '#e0382b' }, swatch: '#e0382b' },
-  { id: 'truckart', name: 'Truck Art', desc: 'Painted in Rawalpindi. Loud and proud.', cost: 2000, palette: { bike_body: '#f5c400', bike_dark: '#1f6b3a', rim: '#ff7a1a' }, swatch: '#f5c400' },
-  { id: 'margalla', name: 'Margalla Green', desc: 'Trail bike for the hills.', cost: 4000, palette: { bike_body: '#1f6b3a', rim: '#8fb47a' }, swatch: '#1f6b3a' },
-  { id: 'metro', name: 'Metro Express', desc: 'Turbo runs 10% faster.', cost: 12000, palette: { bike_body: '#f7f7f7', bike_dark: '#d6202b' }, swatch: '#f7f7f7', bonus: 'speed' },
-  { id: 'lowrider', name: 'Lowrider', desc: 'During Turbo, slides under tape, gantries and teargas automatically.', cost: 25000, palette: { bike_body: '#2b2b2b', rim: '#7b3fe4', bike_metal: '#7b3fe4' }, swatch: '#7b3fe4', bonus: 'lowrider' },
-  { id: 'bouncer', name: 'Bouncer', desc: 'Jumps twice as high while Turbo is active.', cost: 30000, palette: { bike_body: '#ffcc33', bike_dark: '#2c3e8f' }, swatch: '#ffcc33', bonus: 'bouncer' },
+  { id: 'default', name: 'Seventy Classic', desc: 'The trusty red seventy. Never dies.', cost: 0, perkText: '+5 s Turbo', palette: { bike_body: '#e0382b' }, swatch: '#e0382b', bonus: 'extraHover', shape: 'classic' },
+  { id: 'truckart', name: 'Truck Art', desc: 'Painted in Rawalpindi. Loud and proud.', cost: 2000, perkText: 'Coins collected during Turbo count double', palette: { bike_body: '#f5c400', bike_dark: '#1f6b3a', rim: '#ff7a1a' }, swatch: '#f5c400', bonus: 'doubleCoins', shape: 'truckart' },
+  { id: 'margalla', name: 'Margalla Green', desc: 'Trail bike for the hills.', cost: 4000, perkText: 'Lane changes 25% faster', palette: { bike_body: '#1f6b3a', rim: '#8fb47a' }, swatch: '#1f6b3a', bonus: 'laneSpeed', shape: 'trail' },
+  { id: 'metro', name: 'Metro Express', desc: 'White-and-red like the Metro bus. Made for open road.', cost: 12000, perkText: 'Turbo speed boost: +50% instead of +35%', palette: { bike_body: '#f7f7f7', bike_dark: '#d6202b' }, swatch: '#f7f7f7', bonus: 'speed', shape: 'sport' },
+  { id: 'lowrider', name: 'Lowrider', desc: 'Slammed to the tarmac. Barely clears a speed bump.', cost: 25000, perkText: 'Auto-slides under obstacles during Turbo', palette: { bike_body: '#2b2b2b', rim: '#7b3fe4', bike_metal: '#7b3fe4' }, swatch: '#7b3fe4', bonus: 'lowrider', shape: 'lowrider' },
+  { id: 'bouncer', name: 'Bouncer', desc: 'Stiff springs, fearless rider. Built off a rickshaw axle.', cost: 30000, perkText: '+70% jump height during Turbo', palette: { bike_body: '#ffcc33', bike_dark: '#2c3e8f' }, swatch: '#ffcc33', bonus: 'bouncer', shape: 'bouncer' },
 ];

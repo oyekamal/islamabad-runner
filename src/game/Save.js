@@ -3,7 +3,7 @@ const KEY = 'islamabad-runner-save-v1';
 
 const DEFAULTS = () => ({
   coins: 0,
-  keys: 0,
+  keys: 1,          // a brand-new player starts with one revive in hand (see GAP A: early-death softlock)
   tokens: 0,
   hoverboards: 2,
   headstarts: 0,
@@ -25,9 +25,11 @@ const DEFAULTS = () => ({
   settings: { music: true, sfx: true, haptics: true, quality: 'auto' },
   leaderboard: [],             // [{score, coins, distance, date, character}]
   tutorialDone: false,
+  tutorialStep: 0,             // index of the next tutorial caption to show; advances the moment a step is displayed
   achievementsDone: [],        // ids from data/achievements.js already awarded
   bubbleCharge: 0,
   lastLogin: '',               // local date of the last daily login gift
+  playerName: 'Guest',         // player's own display name, separate from the rider character
 });
 
 export class Save {

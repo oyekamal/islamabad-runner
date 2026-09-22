@@ -26,7 +26,7 @@ button { font-family: var(--font); cursor: pointer; }
 .btn.purple { background: var(--purple); box-shadow: 0 6px 0 #5a2bb0, 0 10px 16px rgba(0,0,0,.25); }
 .btn.ghost { background: rgba(26,34,56,.55); box-shadow: 0 4px 0 rgba(0,0,0,.35); }
 .btn:disabled { filter: grayscale(.8) brightness(.8); cursor: default; }
-.btn.small { padding: 9px 16px; font-size: 15px; border-radius: 14px; }
+.btn.small { min-height: 44px; padding: 8px 16px; font-size: 15px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn { width: 54px; height: 54px; border-radius: 16px; border: 0; background: rgba(26,34,56,.6); color: #fff; font-size: 24px; font-weight: 900; box-shadow: 0 4px 0 rgba(0,0,0,.4); display: grid; place-items: center; }
 .icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.4); }
 .panel { background: var(--paper); color: var(--ink); border-radius: 26px; box-shadow: 0 10px 0 #cdbfa3, 0 22px 40px rgba(0,0,0,.35); padding: 18px 18px 22px; }
@@ -70,6 +70,7 @@ button { font-family: var(--font); cursor: pointer; }
 .toggle-item.on { border-color: var(--yellow); background: rgba(31,178,166,.75); }
 .toggle-item.off { opacity: .55; }
 .char-name { font-size: 22px; font-weight: 900; text-shadow: 0 2px 0 #1a2238; }
+.char-label { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .75; margin-right: 4px; vertical-align: middle; }
 .high { font-size: 16px; font-weight: 800; opacity: .95; text-shadow: 0 2px 0 #1a2238; }
 
 /* HUD */
@@ -103,7 +104,7 @@ button { font-family: var(--font); cursor: pointer; }
 .toast { background: rgba(26,34,56,.7); color: #fff; font-weight: 900; font-size: 20px; padding: 8px 18px; border-radius: 14px; animation: pop .35s ease-out both; text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
 .toast.mission { background: linear-gradient(90deg, var(--purple), var(--teal)); font-size: 17px; }
 .toast.mission b { display: block; font-size: 13px; opacity: .85; letter-spacing: 2px; }
-.tutorial { position: absolute; bottom: 30%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 900; text-shadow: 0 3px 0 #1a2238; animation: pulse 1.2s infinite; }
+.tutorial { position: absolute; top: calc(150px + var(--safe-top)); left: 12px; right: 12px; text-align: center; font-size: 17px; font-weight: 900; text-shadow: 0 3px 0 #1a2238; animation: pulse 1.2s infinite; background: rgba(26,34,56,.55); border-radius: 14px; padding: 6px 10px; }
 .stumble-flash { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(224,56,43,.55)); animation: fadeOut .5s ease-out both; }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
@@ -120,13 +121,13 @@ button { font-family: var(--font); cursor: pointer; }
 .caught-title { text-align: center; font-size: 34px; font-weight: 900; color: var(--red); text-shadow: 0 3px 0 #7a1a12; letter-spacing: 2px; margin: 0 0 8px; }
 
 /* shop */
-.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-.tab { flex: 1; border: 0; border-radius: 12px; padding: 9px 4px; font-weight: 900; font-size: 13px; background: #efe6d3; color: #6b7280; box-shadow: 0 3px 0 #cdbfa3; }
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tab { flex: 1; min-height: 44px; border: 0; border-radius: 12px; padding: 8px 4px; font-weight: 900; font-size: 13px; background: #efe6d3; color: #6b7280; box-shadow: 0 3px 0 #cdbfa3; display: flex; align-items: center; justify-content: center; }
 .tab.active { background: var(--teal); color: #fff; box-shadow: 0 3px 0 var(--teal-dark); }
-.list { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; touch-action: pan-y; padding: 2px; }
-.card { display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 18px; padding: 10px 12px; box-shadow: 0 4px 0 #e6dcc7; }
+.list { display: flex; flex-direction: column; gap: 8px; max-height: min(58vh, calc(100vh - 230px)); overflow-y: auto; touch-action: pan-y; padding: 2px; }
+.card { display: flex; gap: 10px; align-items: center; background: #fff; border-radius: 16px; padding: 8px 10px; box-shadow: 0 4px 0 #e6dcc7; }
 .card.selected { outline: 3px solid var(--teal); }
-.card .swatch { width: 54px; height: 54px; border-radius: 16px; flex: none; display: grid; place-items: center; font-size: 26px; box-shadow: inset 0 -6px 0 rgba(0,0,0,.15); }
+.card .swatch { width: 46px; height: 46px; border-radius: 14px; flex: none; display: grid; place-items: center; font-size: 22px; box-shadow: inset 0 -6px 0 rgba(0,0,0,.15); }
 .card .info { flex: 1; min-width: 0; }
 .card .name { font-weight: 900; font-size: 17px; color: var(--ink); }
 .card .desc { font-size: 12px; color: #6b7280; font-weight: 700; line-height: 1.25; }
@@ -160,8 +161,13 @@ button { font-family: var(--font); cursor: pointer; }
 .logo::before { content: ''; position: absolute; z-index: -1; left: -14%; right: -14%; top: 18%; bottom: 14%; pointer-events: none; opacity: .16; background: repeating-linear-gradient(180deg, transparent 0 11px, #fff 11px 15px); mask-image: linear-gradient(90deg, transparent, #000 25%, #000 60%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 60%, transparent); }
 #hud .dist { margin-top: 4px; font-weight: 900; font-size: 18px; text-shadow: 0 2px 0 #1a2238; font-variant-numeric: tabular-nums; opacity: .95; }
 #hud .zone { font-weight: 900; font-size: 12px; letter-spacing: 2px; color: #ffcc33; text-shadow: 0 2px 0 #1a2238; }
-.zone-banner { position: absolute; top: 32%; left: 0; right: 0; text-align: center; font-size: clamp(22px, 7vw, 34px); font-weight: 900; letter-spacing: 3px; color: #ffcc33; text-shadow: 0 3px 0 #1a2238, 0 6px 14px rgba(0,0,0,.4); animation: bannerIn 2.6s ease-out both; pointer-events: none; }
-@keyframes bannerIn { 0% { opacity: 0; transform: translateX(60%); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(-40%); } }
+/* BUG 1 fix: the old animation slid the banner in/out via translateX(60%)/-40%) — a screenshot
+ * caught mid-slide showed the leading letter pushed past the (overflow:hidden) viewport edge,
+ * e.g. "FAISAL AVENUE" clipped to "AISAL AVENUE". Fade + scale only now, no horizontal travel,
+ * so the full name is always inside the 0..100% width box regardless of when it's captured.
+ * Left/right padding + box-sizing keep it off the literal screen edge at any width. */
+.zone-banner { position: absolute; top: 32%; left: 0; right: 0; box-sizing: border-box; padding: 0 10px; text-align: center; font-size: clamp(20px, 6.5vw, 34px); font-weight: 900; letter-spacing: 3px; color: #ffcc33; text-shadow: 0 3px 0 #1a2238, 0 6px 14px rgba(0,0,0,.4); animation: bannerIn 2.6s ease-out both; pointer-events: none; }
+@keyframes bannerIn { 0% { opacity: 0; transform: scale(.85); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.92); } }
 #hud .hover-btn .charge { font-size: 10px; letter-spacing: 1px; color: #7cf2ff; line-height: 1; }
 #hud .letters { top: calc(112px + var(--safe-top)); }
 
@@ -189,11 +195,11 @@ button { font-family: var(--font); cursor: pointer; }
 .mission-card.mini .bar { height: 6px; margin-top: 4px; }
 .saveme { white-space: nowrap; }
 .saveme small { font-size: 13px; font-weight: 800; text-transform: none; opacity: .8; }
-.saveme.coins-revive { font-size: 16px; padding: 11px 20px; }
+.saveme.coins-revive { font-size: 16px; padding: 11px 20px; white-space: normal; }
 .perk-line { font-size: 14px; font-weight: 800; color: var(--yellow); text-shadow: 0 2px 0 #1a2238; margin-top: -8px; }
 .card .perk { font-size: 12px; font-weight: 900; color: var(--teal-dark); margin-top: 3px; }
 .card-btns { display: flex; flex-direction: column; gap: 6px; flex: none; }
-.card-btns .btn.small { padding: 8px 12px; font-size: 14px; }
+.card-btns .btn.small { min-height: 44px; padding: 8px 12px; font-size: 14px; }
 .mission-card.badge .d { font-size: 12px; color: #6b7280; font-weight: 700; margin-top: 2px; }
 .mission-card.badge .t .rw { color: var(--orange); font-size: 12px; white-space: nowrap; }
 .mission-card.badge.earned { background: #eefbf8; box-shadow: 0 4px 0 #bfe8df; }
@@ -207,3 +213,42 @@ button { font-family: var(--font); cursor: pointer; }
 .arrest-stamp{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-8deg) scale(1.6);font-weight:900;font-size:64px;letter-spacing:.06em;color:#e0382b;-webkit-text-stroke:3px #fff;text-shadow:0 6px 0 rgba(0,0,0,.35);pointer-events:none;animation:stampIn .32s cubic-bezier(.2,1.6,.4,1) forwards}
 @keyframes stampIn{from{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.6)}to{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}}
 .perk-bonus{color:#1fb2a6;font-weight:700;margin-top:2px}
+
+/* player profile name */
+.pill.name-pill { border: 0; cursor: pointer; color: #fff; font-family: var(--font); }
+.pill.name-pill .edit-ico { opacity: .7; font-size: 13px; }
+.pill.name-pill:active { transform: translateY(2px); }
+/* game-over identity pill (was a 14px grey caption; now a real pill next to ARRESTED!) */
+.run-owner { display: table; margin: 0 auto 10px; font-size: 16px; font-weight: 900; color: var(--ink); background: #efe6d3; border-radius: 999px; padding: 5px 16px; box-shadow: 0 3px 0 #cdbfa3; }
+.name-input { width: 100%; box-sizing: border-box; border: 0; border-radius: 14px; padding: 12px 14px; font-family: var(--font); font-size: 18px; font-weight: 800; background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2px #e6dcc7; margin: 4px 0 4px; }
+.name-input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--teal); }
+/* live "n/12" counter + inline validation error (never silently strip/rename on save) */
+.name-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 10px; min-height: 16px; }
+.name-error { font-size: 12px; font-weight: 800; color: var(--red); flex: 1; }
+.name-count { font-size: 12px; font-weight: 700; color: #9a8f78; font-variant-numeric: tabular-nums; flex: none; }
+.row.two-up { flex-wrap: nowrap; }
+.row.two-up .btn { flex: 1; padding: 13px 8px; font-size: 16px; text-align: center; }
+.btn:disabled.invalid { filter: grayscale(.9) brightness(.75); }
+.lb-row.run-row { flex-direction: column; align-items: stretch; gap: 2px; }
+.lb-row.run-row .lb-top { display: flex; align-items: center; gap: 8px; }
+.lb-row.run-row .rank { width: 28px; flex: none; font-size: 16px; }
+.lb-row.run-row .lb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.lb-row.run-row .lb-score { flex: none; }
+.lb-row.run-row .lb-sub { font-size: 12px; color: #6b7280; font-weight: 700; text-align: right; }
+.lb-oldname { font-size: 11px; color: #b9ad94; font-weight: 700; }
+
+/* shop: locked/owned/selected card tags */
+.tag { display: inline-block; font-size: 10px; font-weight: 900; letter-spacing: .04em; padding: 2px 7px; border-radius: 6px; margin-left: 4px; vertical-align: middle; text-transform: uppercase; }
+.tag-selected { background: var(--teal); color: #fff; }
+.tag-owned { background: #e6dcc7; color: #6b7280; }
+.tag-locked { background: transparent; font-size: 13px; }
+
+/* shop: bike card silhouette (replaces the identical 🏍️ emoji on every card) */
+.bike-swatch svg { display: block; }
+
+/* shop: scroll affordance for lists that don't fully fit (e.g. 6 bikes at small screen heights).
+ * BUG 2 fix: this used to be position:absolute over the bottom of .list, which overlapped and
+ * obscured the 5th bike card mid-row. It's normal flow now, sitting below the list instead of on
+ * top of it, so it can never cover card content; the JS toggle still hides it once scrolled to
+ * the bottom. */
+.scroll-hint { text-align: center; font-size: 12px; font-weight: 900; color: var(--ink); padding: 6px 0 0; pointer-events: none; animation: pulse 1.4s ease-in-out infinite; }

@@ -43,6 +43,7 @@ export class Player {
     this.char.root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.castShadow = true; });
     this.group.add(this.char.root);
     this.def = def;
+    this.bikeDef = bikeDef || null;
     const palette = { ...(def && def.palette ? def.palette : {}), ...(bikeDef && bikeDef.palette ? bikeDef.palette : {}) };
     this.applyPalette(palette);
     this.current = null;
@@ -125,7 +126,8 @@ export class Player {
   jump() {
     if (this.dead || this.flying) return false;
     if (!this.grounded) { this.pendingJump = 0.15; return false; }
-    this.vy = this.superJump ? PLAYER.superJumpVel : PLAYER.jumpVel;
+    const bounceBoost = this.hover && this.bikeDef && this.bikeDef.bonus === 'bouncer';
+    this.vy = this.superJump ? PLAYER.superJumpVel : (bounceBoost ? PLAYER.bounceJumpVel : PLAYER.jumpVel);
     this.grounded = false;
     this.jumping = true;
     this.rolling = 0;
@@ -164,6 +166,8 @@ export class Player {
   die() {
     this.dead = true;
     this.rolling = 0;
+    this.flying = false;              // never leave the rider frozen mid-air on death
+    this.jetpackMesh.visible = false;
     this.flame.visible = false;
     this.play('Dead', 0.05);
   }
@@ -187,7 +191,8 @@ export class Player {
     if (!running) { this.char.mixer.update(dt); this._sync(); return; }
 
     if (this.laneT < 1) {
-      this.laneT = Math.min(1, this.laneT + dt / PLAYER.laneChangeTime);
+      const laneTime = (this.bikeDef && this.bikeDef.bonus === 'laneSpeed') ? PLAYER.laneChangeTime * 0.75 : PLAYER.laneChangeTime;
+      this.laneT = Math.min(1, this.laneT + dt / laneTime);
       const e = this.laneT < 0.5 ? 2 * this.laneT * this.laneT : 1 - Math.pow(-2 * this.laneT + 2, 2) / 2;
       this.x = (this.laneFrom + (this.targetLane - this.laneFrom) * e) * LANE_W;
       if (this.laneT >= 1) this.lane = this.targetLane;
