@@ -15,10 +15,11 @@ await page.goto((process.env.BASE || 'http://localhost:5199/') + '?auto=1');
 await page.waitForFunction(() => window.__ready);
 await page.evaluate(() => window.__game.audio.init());
 
-// the game must run with zero recorded clips present
-await page.waitForTimeout(6000);
+// the game must run whether or not clips are present. Wait for distance rather than sleeping a
+// fixed time: headless SwiftShader is 4-8 fps and slower still when other agents share the machine.
+const moved = await page.waitForFunction(() => window.__game.distance > 40, { timeout: 60000 }).then(() => true).catch(() => false);
 const run = await page.evaluate(() => ({ dist: window.__game.distance, state: window.__game.state, loaded: window.__game.audio.voice.available }));
-check('game runs normally with no voice files recorded', run.dist > 40 && run.state === 'running', `dist=${run.dist.toFixed(0)} recordedClips=${run.loaded}`);
+check('game runs normally regardless of voice clips', moved && run.state === 'running', `dist=${run.dist.toFixed(0)} clipsLoaded=${run.loaded}`);
 
 // every trigger must be safe to fire, recorded or not
 const fired = await page.evaluate(() => {

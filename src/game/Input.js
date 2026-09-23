@@ -17,6 +17,14 @@ export class Input {
     window.addEventListener('keydown', (e) => this._onKey(e));
   }
 
+  /** True when focus is in an editable field, so keyboard controls must stand down. */
+  static typingInAField() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = (el.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable === true;
+  }
+
   on(fn) { this.handlers.push(fn); return () => { this.handlers = this.handlers.filter((h) => h !== fn); }; }
   emit(type) { if (!this.enabled) return; for (const h of this.handlers) h(type); }
 
@@ -62,6 +70,15 @@ export class Input {
       Escape: 'pause', p: 'pause', P: 'pause',
     };
     const t = map[e.key];
-    if (t) { e.preventDefault(); this.emit(t); }
+    if (!t) return;
+    // Never steal keys from a text field or an open panel: the letters a/d/w/s/h/p and space are
+    // all game controls, so typing a name used to swallow most of it and Enter/space started a run
+    // from behind the menu, the shop or the settings.
+    if (Input.typingInAField()) return;
+    // A panel (shop, records, settings, name editor) is a modal surface: only pause may pass, or
+    // space/Enter behind an open shop would start a run underneath it.
+    if (t !== 'pause' && document.querySelector('#ui .panel')) return;
+    e.preventDefault();
+    this.emit(t);
   }
 }

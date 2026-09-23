@@ -39,8 +39,23 @@ export class Save {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        this.data = { ...this.data, ...parsed, upgrades: { ...this.data.upgrades, ...(parsed.upgrades || {}) },
-          settings: { ...this.data.settings, ...(parsed.settings || {}) }, daily: { ...this.data.daily, ...(parsed.daily || {}) } };
+        // A stored key can be present but null (hand-edited or half-written save). Spreading a null
+        // leaves the field null and the game white-screens on boot, so fall back per field rather
+        // than trusting the merge. `?? undefined` makes the spread use the default.
+        const d = this.data;
+        this.data = { ...d, ...parsed,
+          upgrades: { ...d.upgrades, ...(parsed.upgrades || {}) },
+          settings: { ...d.settings, ...(parsed.settings || {}) },
+          daily: { ...d.daily, ...(parsed.daily || {}) },
+          stats: parsed.stats && typeof parsed.stats === 'object' ? parsed.stats : d.stats,
+          leaderboard: Array.isArray(parsed.leaderboard) ? parsed.leaderboard : d.leaderboard,
+          unlockedCharacters: Array.isArray(parsed.unlockedCharacters) ? parsed.unlockedCharacters : d.unlockedCharacters,
+          unlockedBoards: Array.isArray(parsed.unlockedBoards) ? parsed.unlockedBoards : d.unlockedBoards,
+          achievementsDone: Array.isArray(parsed.achievementsDone) ? parsed.achievementsDone : d.achievementsDone,
+          missionProgress: Array.isArray(parsed.missionProgress) ? parsed.missionProgress : d.missionProgress,
+          missionDone: Array.isArray(parsed.missionDone) ? parsed.missionDone : d.missionDone,
+          missionBase: parsed.missionBase && typeof parsed.missionBase === 'object' ? parsed.missionBase : undefined,
+        };
       }
     } catch (e) { /* first run / private mode */ }
   }
