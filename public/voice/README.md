@@ -1,4 +1,20 @@
-# Voice lines (optional)
+# Voice lines
+
+**These are generated, not recorded.** All 31 clips come from ElevenLabs (`eleven_v3`, voice
+"Fareed — friendly Pakistani accent") via `tools/voice-elevenlabs.py`, because Kamal's mic is poor.
+ElevenLabs paid plans grant commercial rights to the generated audio, so unlike the local MMS Urdu
+model (CC-BY-NC, non-commercial) these are safe to ship.
+
+Regenerate or tweak a line:
+
+    set -a; . ~/Documents/free_work/synctoon/.env; set +a
+    python3 tools/voice-elevenlabs.py --only pu_wah,cc_arre
+
+The delivery tags (`[excited]`, `[sports commentator, shouting]`, `[dizzy, slurred]`) are what give
+the lines comic timing — edit those in the script rather than the words if a line feels flat.
+`tools/voice-tts.py` is the local MMS fallback, kept for reference only; do NOT ship its output.
+
+Recording over them by hand is still supported, and still the most authentic option:
 
 Drop recordings here as `<id>.webm`, where `<id>` matches an entry in `src/data/voicelines.js`
 (for example `pu_wah.webm`). Record them with `tools/voice-recorder.html` — open it while the dev
