@@ -107,13 +107,30 @@ verbatim from a specific broadcast is a takedown risk even when everyone repeats
 - Ambient events should be rare enough to stay special. A monkey stealing from a fruit cart should
   feel like a story you tell, not wallpaper.
 
-## Suggested order
+## Build order (Kamal set this 2026-09-23: voices first, one item at a time)
 
-1. Time of day and weather per run. Biggest felt variety for the least work, no new art.
-2. Poster rotation on existing wall segments. Texture work only, no new geometry.
-3. Make biryani and signals pay visibly, with the payout shown on screen.
-4. Voice stingers, 5 variants per trigger, originals only.
+1. **Voice stingers — IN PROGRESS.** Kamal wants meme voices to make the game fun, so this moved
+   to the front.
+2. Time of day and weather per run. Biggest felt variety for the least work, no new art.
+3. Poster rotation on existing wall segments. Texture work only, no new geometry.
+4. Make biryani and signals pay visibly, with the payout shown on screen.
 5. Ambient characters, after the instancing pass, since they cost draw calls.
+
+### Where the voices come from
+
+The game ships **zero audio files** today; `Audio.js` is entirely procedural WebAudio, which is
+why it is tiny and works offline. Voice lines are the first real audio assets, so size and the
+service-worker precache list both have to be respected.
+
+Local Urdu TTS was checked and rejected for shipping. The bake-off in the urdu-reading-course
+repo found `facebook/mms-tts-urd-script_arabic` is **CC-BY-NC-4.0**, non-commercial, and the best
+fine-tune inherits that restriction. Shipping it on the Play Store is a licence risk even though
+the game is free. Separately, TTS reads text flatly; a meme line lives or dies on comic timing,
+which TTS does not give us.
+
+**So the voice is Kamal's own.** Free, authentic, zero rights problems, and funnier than any
+synthetic voice. The build therefore ships a recorder page so the lines can be captured in one
+sitting, and procedural fallback stingers so the game is never silent before that happens.
 
 ## Legal and sensitivity summary
 

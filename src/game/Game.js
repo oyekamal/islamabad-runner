@@ -290,6 +290,7 @@ export class Game {
     this.slowmo = 0.02; this.hitStop = 0.08;   // hit-stop, then 0.35 slow-mo (see _tick)
     this.fx.crash(this.player.x, this.player.y + 1, this.player.z);
     if (this.run.time < 10) { this.run.earlyCaught = 1; this.save.addStat('earlyCaught'); }
+    this.audio.say('death');
     this.emit('dying', cause);
     this.deathCause = cause;
     this.dyingTimer = 1.6;
@@ -303,6 +304,7 @@ export class Game {
   }
 
   _afterDeath() {
+    if (this.run && Math.floor(this.run.score) > (this.save.data.highScore || 0)) this.audio.say('highScore');
     this.state = 'dead';
     const { keysNeeded, coinsNeeded } = this.reviveCost();
     const s = this.save.data;
@@ -344,6 +346,7 @@ export class Game {
     this.slowmo = 1;
     this.state = 'running';
     this.audio.init(); this.audio.startMusic();
+    this.audio.say('revive');
     this.emit('revived');
   }
 
@@ -409,6 +412,7 @@ export class Game {
     this.run.hoverboards++; this.save.addStat('hoverboards');
     this.run.hoverCrashed = false;
     this.audio.hover();
+    this.audio.say('turbo');
     this.emit('hoverboard', { time: this.hoverTimer });
     return true;
   }
@@ -423,6 +427,7 @@ export class Game {
     this.audio.stumble();
     this.player.stumble();
     if (navigator.vibrate && this.save.data.settings.haptics) navigator.vibrate(60);
+    this.audio.say('dizzy');
     this.emit('dizzy', DIZZY_TIME);
     if (fresh) this.emit('toast', 'TEARGAS! STEERING IS ALL WRONG');
   }
@@ -457,6 +462,7 @@ export class Game {
       this.run[statKey]++; this.save.addStat(statKey);
       if (kind === 'jetpack') { p.setFlying(true, FLY_ALTITUDE); this.audio.jetpack(); }
       else this.audio.powerup();
+      this.audio.say('powerup');
       if (kind === 'sneakers') p.superJump = true;
       this.emit('powerup', { kind, duration: dur });
     } else if (kind === 'msg_bubble') {
@@ -637,6 +643,7 @@ export class Game {
       const bonus = 250 * lap;
       r.coins += bonus;
       this.audio.mission();
+      this.audio.say('milestone');
       this.emit('milestone', { lap, bonus });
     }
 
@@ -833,6 +840,7 @@ export class Game {
     const p = this.player;
     this.fx.sparks(p.x, p.y + 0.6, p.z);
     this.camShake = Math.max(this.camShake, 0.12);
+    this.audio.say('closeCall');
     this.audio.whoosh();
     r.score += 50 * this.multiplier;
     r.closeCalls++; this.save.addStat('closeCalls');

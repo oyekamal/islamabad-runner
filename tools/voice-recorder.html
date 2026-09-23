@@ -1,0 +1,103 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Islamabad Runner — Voice Recorder</title>
+<style>
+  :root { --ink:#1a2238; --paper:#fdf8ec; --accent:#f97316; --ok:#16a34a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ink); color:var(--paper); font:16px/1.5 system-ui,sans-serif; }
+  header { padding:20px 18px; background:#131a2e; position:sticky; top:0; box-shadow:0 2px 10px #0008; }
+  h1 { margin:0 0 6px; font-size:20px; }
+  .hint { font-size:13px; opacity:.8; margin:4px 0 0; }
+  main { padding:16px; max-width:760px; margin:0 auto; }
+  .line { background:#1f2942; border-radius:14px; padding:14px; margin-bottom:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .line.done { outline:2px solid var(--ok); }
+  .txt { flex:1 1 240px; min-width:200px; }
+  .urdu { font-size:19px; font-weight:800; }
+  .mean { font-size:13px; opacity:.72; }
+  .id { font-size:11px; opacity:.45; font-family:ui-monospace,monospace; }
+  button { border:0; border-radius:10px; padding:11px 14px; font-weight:800; font-size:14px; cursor:pointer; min-height:44px; }
+  .rec { background:var(--accent); color:#fff; }
+  .rec.recording { background:#dc2626; }
+  .sec { background:#33415e; color:#fff; }
+  audio { height:40px; }
+  .bar { position:sticky; bottom:0; background:#131a2e; padding:14px 16px; display:flex; gap:10px; align-items:center; box-shadow:0 -2px 10px #0008; }
+  .count { font-weight:800; }
+  a { color:#ffd27a; }
+</style>
+<header>
+  <h1>🎙️ Islamabad Runner — record your voice</h1>
+  <p class="hint">
+    Say each line in your own voice, with energy. Keep each one short, roughly half a second to two seconds.
+    Record in a quiet room, phone or laptop mic is fine. Hit record, say it, hit stop, listen back, redo if you want.
+  </p>
+  <p class="hint">
+    When you are happy with them all, press <b>Download all</b>. Put the files in
+    <code>public/voice/</code> in the repo and they will be used automatically. Any line you skip just
+    falls back to the built-in cartoon sound, so you can do a few at a time.
+  </p>
+  <p class="hint"><b>Only your own voice.</b> Never record audio taken from a TV show, a match or a viral clip — those are owned.</p>
+</header>
+<main id="list"></main>
+<div class="bar">
+  <span class="count" id="count">0 recorded</span>
+  <span style="flex:1"></span>
+  <button class="sec" id="dl">Download all</button>
+</div>
+<script type="module">
+import { ALL_LINES } from '../src/data/voicelines.js';
+const list = document.getElementById('list'), countEl = document.getElementById('count');
+const takes = new Map();
+let current = null;
+
+const refresh = () => { countEl.textContent = `${takes.size} of ${ALL_LINES.length} recorded`; };
+
+for (const line of ALL_LINES) {
+  const el = document.createElement('div');
+  el.className = 'line';
+  el.innerHTML = `<div class="txt"><div class="urdu"></div><div class="mean"></div><div class="id"></div></div>
+    <button class="rec">● Record</button><audio controls hidden></audio>`;
+  el.querySelector('.urdu').textContent = line.urdu;
+  el.querySelector('.mean').textContent = line.meaning + '  —  ' + line.trigger;
+  el.querySelector('.id').textContent = line.id + '.webm';
+  const btn = el.querySelector('.rec'), player = el.querySelector('audio');
+
+  btn.onclick = async () => {
+    if (current && current.state === 'recording') { current.stop(); return; }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { alert('Microphone not available: ' + e.message); return; }
+    const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    const chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      takes.set(line.id, blob);
+      player.src = URL.createObjectURL(blob);
+      player.hidden = false;
+      el.classList.add('done');
+      btn.textContent = '● Re-record';
+      btn.classList.remove('recording');
+      current = null;
+      refresh();
+    };
+    current = rec;
+    rec.start();
+    btn.textContent = '■ Stop';
+    btn.classList.add('recording');
+  };
+  list.appendChild(el);
+}
+refresh();
+
+document.getElementById('dl').onclick = () => {
+  if (!takes.size) { alert('Nothing recorded yet.'); return; }
+  for (const [id, blob] of takes) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${id}.webm`;
+    a.click();
+  }
+};
+</script>

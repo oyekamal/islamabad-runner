@@ -22,7 +22,7 @@ const DEFAULTS = () => ({
   missionDone: [false, false, false],
   stats: {},                   // lifetime stats
   daily: { date: '', letters: 0, done: false, streak: 0, lastDone: '' },
-  settings: { music: true, sfx: true, haptics: true, quality: 'auto' },
+  settings: { music: true, sfx: true, voice: true, haptics: true, quality: 'auto' },
   leaderboard: [],             // [{score, coins, distance, date, character}]
   tutorialDone: false,
   tutorialStep: 0,             // index of the next tutorial caption to show; advances the moment a step is displayed

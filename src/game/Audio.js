@@ -1,4 +1,7 @@
-/** Procedural WebAudio sound: SFX + an upbeat looping soundtrack. No audio files needed. */
+import { Voice } from './Voice.js';
+
+/** Procedural WebAudio sound: SFX + an upbeat looping soundtrack. Voice lines are the one optional
+ *  file-backed layer (see Voice.js); everything else needs no audio files. */
 export class Audio {
   constructor(settings) {
     this.settings = settings;
@@ -8,6 +11,7 @@ export class Audio {
     this._step = 0;
     this._timer = null;
     this.intensity = 0;
+    this.voice = new Voice(this, settings);
   }
 
   init() {
@@ -23,6 +27,7 @@ export class Audio {
     this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.voice.preload();          // optional recorded lines; absent files fall back to stingers
   }
 
   get sfxEnabled() { return this.ctx && this.settings.sfx; }
@@ -130,3 +135,6 @@ export class Audio {
     }
   }
 }
+
+/** Convenience: audio.say('powerup') reads better at the call sites than audio.voice.say(). */
+Audio.prototype.say = function (trigger) { try { return this.voice.say(trigger); } catch (e) { return false; } };

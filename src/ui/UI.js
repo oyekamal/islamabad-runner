@@ -845,6 +845,7 @@ export class UI {
         <div class="list" style="max-height:none">
           <div class="setting">Music<button class="switch ${st.music ? 'on' : ''}" data-set="music"></button></div>
           <div class="setting">Sound effects<button class="switch ${st.sfx ? 'on' : ''}" data-set="sfx"></button></div>
+          <div class="setting">Voice<button class="switch ${st.voice !== false ? 'on' : ''}" data-set="voice"></button></div>
           <div class="setting">Vibration<button class="switch ${st.haptics ? 'on' : ''}" data-set="haptics"></button></div>
           <div class="setting">Quality<div class="seg">${['low', 'auto', 'high'].map((q) => `<button class="segb ${(st.quality || 'auto') === q ? 'on' : ''}" data-quality="${q}">${q}</button>`).join('')}</div></div>
           <div class="setting" style="justify-content:center"><button class="btn red small" data-act="reset">Reset progress</button></div>
