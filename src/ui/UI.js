@@ -140,6 +140,60 @@ const bikeSVG = (b) => {
   const draw = BIKE_SHAPES[b.shape] || BIKE_SHAPES.classic;
   return `<svg viewBox="0 0 64 40" width="38" height="26" aria-hidden="true" focusable="false">${draw(frame, rim, dark)}</svg>`;
 };
+/** Small rider portrait so character cards read distinctly at a glance, like the bike silhouettes
+ * above — built only from each character's EXISTING palette fields (jacket/helmet/skin), no new
+ * data. BUG 16b fix: every card previously drew the exact same plain circle-head-on-jacket shape
+ * and relied on flat colour alone to differentiate riders; each shape below adds one distinguishing
+ * silhouette accent true to that character's description (courier strap, racer visor+ponytail,
+ * mechanic cap+wrench, medic full-face helmet+cross, Sardar Ji's turban, Chacha's flat cap+
+ * moustache, the ranger's tactical helmet+chevron) while still keying every colour off that
+ * character's own palette so a re-palette elsewhere in the data file is picked up automatically. */
+const RIDER_SHAPES = {
+  zain: (skin, helmet, jacket) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M19 20 a13 13 0 0 1 26 0 v3 h-26 z" fill="${helmet}"/>
+    <path d="M14 46 L26 33" stroke="${helmet}" stroke-width="3.5" stroke-linecap="round"/>`,
+  noor: (skin, helmet, jacket) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M19 22 a13 13 0 0 1 26 0" fill="none" stroke="${helmet}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M45 15 q7 5 3 14" fill="none" stroke="${helmet}" stroke-width="3" stroke-linecap="round"/>`,
+  guddu: (skin, helmet, jacket) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M19 21 a13 8 0 0 1 26 0 z" fill="${helmet}"/>
+    <path d="M22 47 l4.5 -5 l4.5 5 l4.5 -5 l4.5 5" fill="none" stroke="${helmet}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
+  rida: (skin, helmet, jacket) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M18 21 a14 14 0 0 1 28 0 v4 h-28 z" fill="${helmet}"/>
+    <rect x="29" y="40" width="6" height="14" rx="2" fill="#fff"/>
+    <rect x="24" y="45" width="16" height="6" rx="2" fill="#fff"/>`,
+  sardar: (skin, helmet, jacket) => `
+    <circle cx="32" cy="40" r="15" fill="${jacket}"/>
+    <path d="M15 29 a17 15 0 0 1 34 0 q-17 9 -34 0 Z" fill="${helmet}"/>
+    <circle cx="33" cy="15" r="3.5" fill="${helmet}"/>`,
+  chacha: (skin, helmet, jacket, dark) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M17 20 a15 8 0 0 1 30 0 z" fill="${helmet}"/>
+    <path d="M23 31 q9 5 18 0" fill="none" stroke="${dark}" stroke-width="3" stroke-linecap="round"/>`,
+  ranger: (skin, helmet, jacket, dark) => `
+    <circle cx="32" cy="38" r="15" fill="${jacket}"/>
+    <circle cx="32" cy="24" r="13" fill="${skin}"/>
+    <path d="M19 20 a13 13 0 0 1 26 0 v3 h-26 z" fill="${helmet}"/>
+    <path d="M25 14 L32 9 L39 14 L32 18 Z" fill="${dark}"/>`,
+};
+const riderSVG = (c) => {
+  const p = c.palette || {};
+  const skin = p.skin || '#e8b58a';
+  const helmet = p.helmet || '#2b2b2b';
+  const jacket = p.jacket || '#1fb2a6';
+  const dark = p.jacket_dark || p.pants || '#1a2238';
+  const draw = RIDER_SHAPES[c.id] || RIDER_SHAPES.zain;
+  return `<svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true" focusable="false">${draw(skin, helmet, jacket, dark)}</svg>`;
+};
 /** Card status badge for locked/owned/selected shop entries. */
 const cardBadge = ({ selected, owned, locked }) => {
   if (selected) return '<span class="tag tag-selected">SELECTED</span>';
@@ -261,7 +315,7 @@ export class UI {
     const daily = s.daily;
     const el = h(`<div id="menu" class="screen">
       <div class="topbar ui-block">
-        <button class="pill name-pill" data-act="edit-name" aria-label="Edit your name">👤 ${escHtml(s.playerName || 'Guest')} <span class="edit-ico">✎</span></button>
+        <button class="pill name-pill" data-act="edit-name" aria-label="Edit your name">👤 <span class="name-text">${escHtml(s.playerName || 'Guest')}</span><span class="edit-ico">✎</span></button>
         <span class="pill"><i class="ico coin">$</i>${fmt(s.coins)}</span>
         <span class="pill"><i class="ico key">⚷</i>${s.keys}</span>
         <span class="spacer"></span>
@@ -342,7 +396,12 @@ export class UI {
       const chars = Array.from(input.value);
       if (chars.length > 12) input.value = chars.slice(0, 12).join('');
       const { valid, error } = validateName(input.value);
-      countEl.textContent = `${codePointLen(input.value.trim())}/12`;
+      // BUG 11b (visual) fix: this used to count every raw code point typed, including characters
+      // that will never actually be saved (e.g. "!!!" showed "3/12") — the cap is 12 allowed
+      // characters (letters/numbers/spaces, same NAME_ALLOWED_CHAR set cleanName() uses), so
+      // disallowed symbols shouldn't advance the counter toward it at all.
+      const allowedLen = Array.from(input.value.trim()).filter((ch) => NAME_ALLOWED_CHAR.test(ch)).length;
+      countEl.textContent = `${allowedLen}/12`;
       errorEl.textContent = touched ? error : '';
       saveBtn.disabled = !valid;
       saveBtn.classList.toggle('invalid', touched && !valid);
@@ -539,10 +598,18 @@ export class UI {
 
   // ------------------------------------------------------------------ pause
   showPause() {
-    const el = h(`<div class="overlay ui-block fade-in"><div class="panel">
+    // BUG 14 (visual) fix: this panel had no explicit width, so it fell back to the bare
+    // `.overlay .panel { width: min(420px, 100%) }` default while every other panel in the game
+    // (Shop/Records/Missions/Daily/Settings/Name editor) opts into the wider `min(460px, 100%)` —
+    // a real, visible 40px narrower than the rest of the panel system. Its button row also used the
+    // generic centered `.row` (auto-width buttons, centered as a cluster — fine for the mismatched
+    // Resume/Save-me/Home/Play-again stacks elsewhere, but reads as lopsided for a plain two-choice
+    // row), where every other two-choice row in the game (Skip/Save, Home/Play again) uses
+    // `.row.two-up` so both buttons split the row evenly.
+    const el = h(`<div class="overlay ui-block fade-in"><div class="panel" style="width:min(460px,100%)">
       <h2>Paused</h2>
       <div class="stat-grid"><div class="stat"><div class="k">Score</div><div class="v">${fmt(this.game.run.score)}</div></div><div class="stat"><div class="k">Coins</div><div class="v">${fmt(this.game.run.coins)}</div></div></div>
-      <div class="row"><button class="btn orange" data-act="resume">Resume</button><button class="btn ghost" data-act="quit">Quit</button></div>
+      <div class="row two-up"><button class="btn orange" data-act="resume">Resume</button><button class="btn ghost" data-act="quit">Quit</button></div>
     </div></div>`);
     el.addEventListener('click', (e) => {
       const a = e.target.closest('[data-act]'); if (!a) return;
@@ -586,6 +653,13 @@ export class UI {
   showGameOver({ run, canRevive, keysNeeded, cause, coinsNeeded, canReviveWithCoins }) {
     const g = this.game, s = g.save.data;
     if (this.hud) this.hud.style.display = 'none';   // don't let pause/turbo/HUD bleed through the game-over overlay
+    // Defensive: if a previous game-over overlay is still in the DOM (only reachable today by a
+    // harness driving Game.emit('gameOver', …) more than once without a real death between calls —
+    // real play can never re-enter this state, since _update(dt) only runs while state==='running'
+    // and death moves state to 'dying'/'dead' before any second collision could fire) don't stack a
+    // second panel on top of it silently.
+    const stalePanel = this.root.querySelector('.overlay .panel.gameover');
+    if (stalePanel) stalePanel.closest('.overlay').remove();
     const isBest = Math.floor(run.score) > s.highScore;
     const dist = Math.floor(g.distance);
     const mult = g.multiplier;                       // captured at death: base + booster + 2X, not baseMultiplier
@@ -645,7 +719,10 @@ export class UI {
       if (act === 'revive') { clearInterval(iv); if (g.revive()) el.remove(); }
       if (act === 'revive-coins') { clearInterval(iv); if (typeof g.reviveWithCoins === 'function' && g.reviveWithCoins()) el.remove(); }
       if (act === 'home') { clearInterval(iv); g.goToMenu(); }
-      if (act === 'again') { clearInterval(iv); g.finishRun(); g.startRun(); this.showHUD(); }
+      // BUG B fix: this used to skip showTutorial() (unlike startFromMenu), so a death mid-tutorial
+      // followed by "Play again" silently dropped the rest of the tutorial — tutorialStep froze and
+      // no caption ever appeared again until the player went Home and back in through the menu.
+      if (act === 'again') { clearInterval(iv); g.finishRun(); g.startRun(); this.showHUD(); if (!g.save.data.tutorialDone) this.showTutorial(); }
     });
     this.root.appendChild(el);
   }
@@ -695,7 +772,7 @@ export class UI {
           else if (c.tokens) btn = `<span class="btn small ghost">${locked ? '🔒 ' : ''}${s.tokens}/${c.tokens} tokens</span>`;
           else btn = `<button class="btn small yellow" data-buy-char="${c.id}" ${s.coins < c.cost ? 'disabled' : ''}>${locked ? '🔒 ' : ''}$ ${fmt(c.cost)}</button>`;
           const badge = cardBadge({ selected: sel, owned: owned && !sel, locked });
-          list.appendChild(h(`<div class="card ${sel ? 'selected' : ''}"><div class="swatch" style="background:${c.palette.jacket}"><span style="width:26px;height:26px;border-radius:50%;background:${c.palette.skin || '#e8b58a'};border-top:9px solid ${c.palette.helmet};display:block"></span></div><div class="info"><div class="name">${c.name} ${badge}</div><div class="desc">${c.desc}</div>${c.perkText ? `<div class="perk">✦ ${c.perkText}</div>` : ''}</div>${btn}</div>`));
+          list.appendChild(h(`<div class="card ${sel ? 'selected' : ''}"><div class="swatch rider-swatch" style="background:${c.palette.jacket}">${riderSVG(c)}</div><div class="info"><div class="name">${c.name} ${badge}</div><div class="desc">${c.desc}</div>${c.perkText ? `<div class="perk">✦ ${c.perkText}</div>` : ''}</div>${btn}</div>`));
         }
       } else if (tab === 'bikes') {
         for (const b of BIKES) {
@@ -715,7 +792,13 @@ export class UI {
           const max = POWERUP_UPGRADE_COST.length;
           const cost = lvl < max ? POWERUP_UPGRADE_COST[lvl] : null;
           const locked = cost != null && s.coins < cost;
-          list.appendChild(h(`<div class="card"><div class="swatch" style="background:#e3f2ff">${{ jetpack: '🚀', sneakers: '🔩', magnet: '🧲', multiplier: '✖️' }[k]}</div><div class="info"><div class="name">${PU_NAME[k]}</div><div class="desc">Lasts ${10 + lvl * 5} s${cost ? ` → ${15 + lvl * 5} s` : ' (max)'}</div><div class="lvl">${Array.from({ length: max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div></div>
+          // BUG 16a (visual) fix: the ✖️ (heavy multiplication x) emoji renders as a flat grey glyph
+          // in a lot of browser/font combinations instead of a coloured emoji, so this card was the
+          // only one in the shop with a lifeless icon. Reuses the same blue "2X" badge treatment the
+          // in-run HUD powerbar already uses for this exact power-up (.pbar.multiplier), which is
+          // unambiguous and guaranteed on-brand regardless of emoji font support.
+          const upgradeIcon = k === 'multiplier' ? '<span class="mult-badge">2X</span>' : { jetpack: '🚀', sneakers: '🔩', magnet: '🧲' }[k];
+          list.appendChild(h(`<div class="card"><div class="swatch" style="background:#e3f2ff">${upgradeIcon}</div><div class="info"><div class="name">${PU_NAME[k]}</div><div class="desc">Lasts ${10 + lvl * 5} s${cost ? ` → ${15 + lvl * 5} s` : ' (max)'}</div><div class="lvl">${Array.from({ length: max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div></div>
             ${cost ? `<button class="btn small yellow" data-upgrade="${k}" ${s.coins < cost ? 'disabled' : ''}>${locked ? '🔒 ' : ''}$ ${fmt(cost)}</button>` : '<span class="btn small ghost">MAX</span>'}</div>`));
         }
       }
@@ -807,7 +890,7 @@ export class UI {
         return `<div class="mission-card badge ${earned ? 'earned' : ''}"><div class="t"><span>${earned ? '🏅 ' : ''}${a.name}</span><span class="${earned ? 'done' : 'rw'}">${earned ? '✔' : rewardText(a.reward)}</span></div>
           <div class="d">${a.desc}</div><div class="bar"><i style="width:${Math.min(100, shown / a.target * 100)}%"></i></div><div class="p">${fmt(shown)} / ${fmt(a.target)}</div></div>`;
       }).join('');
-      body = `<div class="small-note" style="margin:0 0 8px">${done.length}/${ACHIEVEMENTS.length} badges earned</div><div class="list">${cards}</div>`;
+      body = `<div class="small-note" style="margin:0 0 8px">${done.length}/${ACHIEVEMENTS.length} badges earned</div><div class="list">${cards}</div><div class="scroll-hint" hidden>⌄ scroll for more</div>`;
     } else {
       const MEDAL = ['🥇', '🥈', '🥉'];
       const rows = s.leaderboard.length ? s.leaderboard.map((r, i) => {
@@ -819,7 +902,7 @@ export class UI {
         return `<div class="lb-row run-row"><div class="lb-top"><span class="rank">${MEDAL[i] || `${i + 1}.`}</span><span class="lb-score">${fmt(r.score)}</span></div><div class="lb-sub">${fmt(r.distance)} m · ${escHtml(riderName)} · ${r.date}${oldNameTag}</div></div>`;
       }).join('') : '<div class="small-note">No runs yet. Go run!</div>';
       body = `<div class="stat-grid"><div class="stat"><div class="k">Runs</div><div class="v">${s.totalRuns}</div></div><div class="stat"><div class="k">Best distance</div><div class="v">${fmt(s.bestDistance)} m</div></div><div class="stat"><div class="k">Total coins</div><div class="v">${fmt(s.stats.coins || 0)}</div></div><div class="stat"><div class="k">Jumps</div><div class="v">${fmt(s.stats.jumps || 0)}</div></div></div>
-        <div class="list">${rows}</div>`;
+        <div class="list">${rows}</div><div class="scroll-hint" hidden>⌄ scroll for more</div>`;
     }
     const el = h(`<div class="screen dim scroll ui-block">
       <div class="topbar"><span class="pill">🏆 ${fmt(s.highScore)}</span><span class="pill">🏅 ${done.length}/${ACHIEVEMENTS.length}</span><span class="spacer"></span><button class="icon-btn" data-act="back">✕</button></div>
@@ -833,6 +916,23 @@ export class UI {
       if (e.target.closest('[data-act=back]')) { this.game.audio.click(); this.showMenu(); }
     });
     this.root.appendChild(el);
+    // BUG 10 (visual) fix: `.list` here was already a real overflow:auto scroll container (same
+    // shared rule Shop uses, `max-height:min(58vh,…)`), so the last badge/run card was correctly
+    // clipped mid-row by design — Shop just never left that unindicated. Records had no scroll-hint
+    // element at all, so there was nothing telling the player more content exists below the fold.
+    // Reuses the exact affordance + show/hide logic showShop() already has.
+    const list = el.querySelector('.list');
+    const scrollHint = el.querySelector('.scroll-hint');
+    if (list && scrollHint) {
+      const updateScrollHint = () => {
+        const overflowing = list.scrollHeight > list.clientHeight + 2;
+        const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 4;
+        scrollHint.hidden = !overflowing || atBottom;
+      };
+      list.addEventListener('scroll', updateScrollHint);
+      updateScrollHint();
+      requestAnimationFrame(updateScrollHint);
+    }
   }
 
   showSettings() {
@@ -856,7 +956,11 @@ export class UI {
       const sw = e.target.closest('[data-set]');
       if (sw) { st[sw.dataset.set] = !st[sw.dataset.set]; this.game.save.write(); if (sw.dataset.set === 'music' && !st.music) this.game.audio.stopMusic(); this.showSettings(); return; }
       const q = e.target.closest('[data-quality]');
-      if (q) { st.quality = q.dataset.quality; this.game.save.write(); this.game.audio.click(); if (typeof this.game.setQuality === 'function') this.game.setQuality(st.quality); this.showSettings(); return; }
+      if (q) {
+        this.game.audio.click();
+        this.game.setQuality(q.dataset.quality);   // public: applies now and persists the choice
+        this.showSettings(); return;
+      }
       const a = e.target.closest('[data-act]'); if (!a) return;
       if (a.dataset.act === 'back') { this.game.audio.click(); this.showMenu(); }
       if (a.dataset.act === 'reset') { if (confirm('Reset all progress? This cannot be undone.')) { this.game.save.reset(); location.reload(); } }

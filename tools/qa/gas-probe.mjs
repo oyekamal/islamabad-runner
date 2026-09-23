@@ -27,6 +27,41 @@ const after = await page.evaluate(() => ({ state: window.__game.state, dead: win
 check('the run does NOT end on teargas', after.state === 'running' && after.dead === false, `state=${after.state} dead=${after.dead}`);
 check('dizzy overlay is on screen', await page.locator('.dizzy-fx').count() > 0);
 
+// --- BUG A regression test: the dizzy overlay must never swallow real pointer/touch input.
+// `#ui > * { pointer-events: auto }` (an ID selector) used to beat `.dizzy-fx`'s own
+// `pointer-events: none` (a bare class selector) purely on specificity, so the full-screen haze
+// silently absorbed every swipe/tap/click instead of passing them through to the canvas underneath —
+// invisible to game._onInput()-style probes, since those call the handler directly and never go
+// through the browser's real hit-testing at all. This uses page.mouse (trusted CDP pointer events)
+// and document.elementFromPoint, exactly like a real finger on a real screen.
+await page.evaluate(() => { const g = window.__game; g.player.targetLane = g.player.lane = 0; });
+const canvasBox = await page.locator('canvas#game').boundingBox();
+const cx = canvasBox.x + canvasBox.width / 2, cy = canvasBox.y + canvasBox.height / 2;
+const hitEl = await page.evaluate(([x, y]) => {
+  const el = document.elementFromPoint(x, y);
+  return el ? (el.className || el.tagName) : null;
+}, [cx, cy]);
+check('the dizzy overlay is not the hit-test target at screen centre', !String(hitEl).includes('dizzy'), `elementFromPoint -> ${hitEl}`);
+await page.mouse.move(cx, cy);
+await page.mouse.down();
+await page.mouse.move(cx - 80, cy, { steps: 6 });
+await page.mouse.up();
+await page.waitForTimeout(100);
+const laneAfterRealSwipe = await page.evaluate(() => window.__game.player.targetLane);
+check('a REAL swipe (page.mouse, not game._onInput) reaches the game and moves the lane', laneAfterRealSwipe !== 0, `targetLane=${laneAfterRealSwipe}`);
+
+// a real click on the Pause button must work too — and Resume must be reachable from it — while dizzy
+await page.evaluate(() => { window.__game.player.targetLane = window.__game.player.lane = 0; });
+await page.locator('#hud .pause').first().click({ timeout: 4000 }).catch((e) => check('Pause button is really clickable while dizzy', false, e.message.slice(0, 80)));
+const pausedWhileDizzy = await page.waitForFunction(() => window.__game.state === 'paused', { timeout: 4000 }).then(() => true).catch(() => false);
+check('a real click really pauses the game while dizzy (not blocked by the overlay)', pausedWhileDizzy, `state=${await page.evaluate(() => window.__game.state)}`);
+if (pausedWhileDizzy) {
+  const resumeBtn = page.locator('.btn', { hasText: /resume/i }).first();
+  await resumeBtn.click({ timeout: 4000 }).catch((e) => check('Resume is really clickable from the pause menu while dizzy', false, e.message.slice(0, 80)));
+  const resumedFromDizzyPause = await page.waitForFunction(() => window.__game.state === 'running', { timeout: 4000 }).then(() => true).catch(() => false);
+  check('Resume really works from the pause menu while dizzy (no soft-lock)', resumedFromDizzyPause);
+}
+
 // steering is inverted while dizzy: a 'left' swipe should move the rider RIGHT
 const rev = await page.evaluate(() => {
   const g = window.__game;

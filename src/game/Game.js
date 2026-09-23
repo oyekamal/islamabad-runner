@@ -157,6 +157,15 @@ export class Game {
   }
 
   /** DPR + shadow settings for a quality tier (antialias can't change after renderer creation). */
+  /** Public: change render quality from the settings screen. `_applyQuality` is the internal
+   *  auto-downgrade path; this keeps `quality` in step so the setting survives the session. */
+  setQuality(q) {
+    this.quality = q;
+    this._applyQuality(q === 'auto' ? 'high' : q);
+    this.save.data.settings.quality = q;
+    this.save.write();
+  }
+
   _applyQuality(q) {
     const dpr = window.devicePixelRatio || 1;
     this.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(dpr, q === 'high' ? 2 : 1.5));

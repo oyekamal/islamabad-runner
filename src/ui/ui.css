@@ -25,7 +25,13 @@ button { font-family: var(--font); cursor: pointer; }
 .btn.red { background: var(--red); box-shadow: 0 6px 0 #a3261c, 0 10px 16px rgba(0,0,0,.25); }
 .btn.purple { background: var(--purple); box-shadow: 0 6px 0 #5a2bb0, 0 10px 16px rgba(0,0,0,.25); }
 .btn.ghost { background: rgba(26,34,56,.55); box-shadow: 0 4px 0 rgba(0,0,0,.35); }
-.btn:disabled { filter: grayscale(.8) brightness(.8); cursor: default; }
+/* BUG 11a (visual) fix: grayscale+brightness filters on top of .btn.orange/.yellow/etc's own hue
+ * don't desaturate to a neutral — they average toward a muddy brown that still reads roughly as
+ * "a duller version of the same clickable button" rather than "disabled". Flat, on-palette neutral
+ * tones instead (the same tan/grey already used for every other inactive/locked surface in the
+ * game: .tag-owned, .switch's off state, .card .lvl's unfilled pips), with the 3D press-bevel
+ * shadow flattened to a thin ridge so it also stops *looking* pressable. */
+.btn:disabled { filter: none; background: #cdbfa3; color: #6b7280; box-shadow: 0 3px 0 #b3a488; cursor: default; }
 .btn.small { min-height: 44px; padding: 8px 16px; font-size: 15px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn { width: 54px; height: 54px; border-radius: 16px; border: 0; background: rgba(26,34,56,.6); color: #fff; font-size: 24px; font-weight: 900; box-shadow: 0 4px 0 rgba(0,0,0,.4); display: grid; place-items: center; }
 .icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.4); }
@@ -58,7 +64,15 @@ button { font-family: var(--font); cursor: pointer; }
 .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), var(--yellow)); border-radius: 999px; transition: width .2s; }
 
 /* menu */
-.tap-to-play { font-size: clamp(26px, 8vw, 40px); font-weight: 900; color: #fff; animation: pulse 1.4s ease-in-out infinite; letter-spacing: 2px; }
+/* BUG 13 (visual) fix: plain white text with no shadow/outline at all — readable over the dark road
+ * in the background 3D scene, but the character/camera framing puts light green grass behind it at
+ * some viewport ratios (tablet/desktop), where white-on-light-green has too little contrast to read
+ * at a glance. Reuses the same multi-directional dark outline (`.stroke`, used on the logo) instead
+ * of a single drop-shadow: an outline adds contrast on every edge of every glyph regardless of what's
+ * behind it, whereas a bottom-only shadow does nothing against a background of similar value/lightness
+ * right where it actually matters (the top and sides of the letters). */
+.tap-to-play { font-size: clamp(26px, 8vw, 40px); font-weight: 900; color: #fff; animation: pulse 1.4s ease-in-out infinite; letter-spacing: 2px;
+  text-shadow: 0 2px 0 #1a2238, 0 -1px 0 #1a2238, 1px 0 0 #1a2238, -1px 0 0 #1a2238, 0 4px 8px rgba(0,0,0,.35); }
 .menu-bottom { width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .menu-nav { display: flex; gap: 10px; justify-content: center; width: 100%; }
 .nav-btn { flex: 1; max-width: 88px; border: 0; border-radius: 18px; padding: 10px 4px 8px; background: rgba(26,34,56,.6); color: #fff; font-weight: 900; font-size: 12px; box-shadow: 0 4px 0 rgba(0,0,0,.4); display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
@@ -104,7 +118,12 @@ button { font-family: var(--font); cursor: pointer; }
 .toast { background: rgba(26,34,56,.7); color: #fff; font-weight: 900; font-size: 20px; padding: 8px 18px; border-radius: 14px; animation: pop .35s ease-out both; text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
 .toast.mission { background: linear-gradient(90deg, var(--purple), var(--teal)); font-size: 17px; }
 .toast.mission b { display: block; font-size: 13px; opacity: .85; letter-spacing: 2px; }
-.tutorial { position: absolute; top: calc(150px + var(--safe-top)); left: 12px; right: 12px; text-align: center; font-size: 17px; font-weight: 900; text-shadow: 0 3px 0 #1a2238; animation: pulse 1.2s infinite; background: rgba(26,34,56,.55); border-radius: 14px; padding: 6px 10px; }
+/* BUG 15 (visual) fix: `left:12px; right:12px` gave this a fixed 12px inset regardless of viewport —
+ * a barely-there ~1% margin at desktop width, so the 14px border-radius corners were too subtle to
+ * read against how visibly inset every other card/panel/toast in the game is (all of them cap their
+ * own width instead of just insetting a fixed few px from the viewport edge). Capped and centered
+ * like the toast/panel system instead, so it reads as a real rounded card at every width. */
+.tutorial { position: absolute; top: calc(150px + var(--safe-top)); left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 48px)); box-sizing: border-box; text-align: center; font-size: 17px; font-weight: 900; text-shadow: 0 3px 0 #1a2238; animation: pulse 1.2s infinite; background: rgba(26,34,56,.55); border-radius: 18px; padding: 8px 14px; }
 .stumble-flash { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(224,56,43,.55)); animation: fadeOut .5s ease-out both; }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
@@ -144,11 +163,20 @@ button { font-family: var(--font); cursor: pointer; }
 .word span { width: 38px; height: 46px; border-radius: 10px; background: #efe6d3; display: grid; place-items: center; font-size: 24px; font-weight: 900; color: #b9ad94; }
 .word span.got { background: var(--purple); color: #fff; box-shadow: 0 3px 0 #5a2bb0; }
 .setting { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; box-shadow: 0 3px 0 #e6dcc7; font-weight: 900; }
-.switch { width: 54px; height: 30px; border-radius: 999px; background: #cdbfa3; position: relative; border: 0; }
-.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: left .15s; }
-.switch.on { background: var(--teal); } .switch.on::after { left: 27px; }
+/* BUG 12 (visual) fix: a 54x30 tap target is under the 44px minimum (WCAG 2.5.5 / iOS & Android HIG).
+ * The button's own box is now 54x44 so the real hit area meets that, while the visible track stays
+ * the original 54x30 pill (centered via ::before) so the switches don't look visually bulkier. */
+.switch { width: 54px; height: 44px; border-radius: 999px; background: transparent; position: relative; border: 0; padding: 0; }
+.switch::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 30px; transform: translateY(-50%); border-radius: 999px; background: #cdbfa3; transition: background .15s; }
+.switch::after { content: ''; position: absolute; top: 50%; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transform: translateY(-50%); transition: left .15s; }
+.switch.on::before { background: var(--teal); } .switch.on::after { left: 27px; }
 .lb-row { display: flex; justify-content: space-between; background: #fff; border-radius: 12px; padding: 8px 12px; font-weight: 900; box-shadow: 0 3px 0 #e6dcc7; }
 .lb-row .rank { width: 28px; color: var(--orange); }
+/* BUG 7 (visual) fix: showDaily() already computes which streak-reward row is "today" and adds
+ * `selected` to it, but no rule ever styled `.lb-row.selected` (only the unrelated `.card.selected`
+ * shop outline existed) — so the mark was applied and then rendered completely invisibly. Reuses the
+ * same teal-outline treatment as `.card.selected` for visual consistency with the rest of the panels. */
+.lb-row.selected { outline: 3px solid var(--teal); background: #eefbf8; }
 .small-note { font-size: 12px; color: #6b7280; font-weight: 700; text-align: center; margin-top: 10px; }
 .close-x { position: absolute; top: 10px; right: 12px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-weight: 900; font-size: 20px; box-shadow: 0 3px 0 #a3261c; }
 .mystery-reveal { text-align: center; font-size: 22px; font-weight: 900; padding: 10px; animation: pop .5s ease-out both; }
@@ -160,7 +188,14 @@ button { font-family: var(--font); cursor: pointer; }
 .logo .l2 { font-size: clamp(38px, 13vw, 76px); font-weight: 900; letter-spacing: 2px; color: #2c7be5; line-height: .95; text-shadow: 0 3px 0 #10204f, 0 7px 0 #fff, 0 12px 18px rgba(0,0,0,.4); }
 .logo::before { content: ''; position: absolute; z-index: -1; left: -14%; right: -14%; top: 18%; bottom: 14%; pointer-events: none; opacity: .16; background: repeating-linear-gradient(180deg, transparent 0 11px, #fff 11px 15px); mask-image: linear-gradient(90deg, transparent, #000 25%, #000 60%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 60%, transparent); }
 #hud .dist { margin-top: 4px; font-weight: 900; font-size: 18px; text-shadow: 0 2px 0 #1a2238; font-variant-numeric: tabular-nums; opacity: .95; }
-#hud .zone { font-weight: 900; font-size: 12px; letter-spacing: 2px; color: #ffcc33; text-shadow: 0 2px 0 #1a2238; }
+/* BUG 3 (visual) fix: unconstrained, the zone name (up to "D-CHOWK — FINAL SPRINT" / "SRINAGAR
+ * CHOKEPOINT") ran straight into the word-hunt letter tiles pinned at `right:12px`. The letters
+ * column has a fixed worst-case width (max daily word is 9 letters: 9*22px + 8*3px gaps = 222px —
+ * see DAILY_WORDS in src/data/missions.js), so `100vw - 12px(left offset) - 222px(letters) -
+ * 12px(letters' own right offset) - 16px(breathing room) = 100vw - 262px` is the exact safe cap at
+ * any viewport; ellipsis truncates the rare case that still doesn't fit instead of overlapping. */
+#hud .zone { font-weight: 900; font-size: 12px; letter-spacing: 2px; color: #ffcc33; text-shadow: 0 2px 0 #1a2238;
+  max-width: calc(100vw - 262px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* BUG 1 fix: the old animation slid the banner in/out via translateX(60%)/-40%) — a screenshot
  * caught mid-slide showed the leading letter pushed past the (overflow:hidden) viewport edge,
  * e.g. "FAISAL AVENUE" clipped to "AISAL AVENUE". Fade + scale only now, no horizontal travel,
@@ -169,7 +204,13 @@ button { font-family: var(--font); cursor: pointer; }
 .zone-banner { position: absolute; top: 32%; left: 0; right: 0; box-sizing: border-box; padding: 0 10px; text-align: center; font-size: clamp(20px, 6.5vw, 34px); font-weight: 900; letter-spacing: 3px; color: #ffcc33; text-shadow: 0 3px 0 #1a2238, 0 6px 14px rgba(0,0,0,.4); animation: bannerIn 2.6s ease-out both; pointer-events: none; }
 @keyframes bannerIn { 0% { opacity: 0; transform: scale(.85); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.92); } }
 #hud .hover-btn .charge { font-size: 10px; letter-spacing: 1px; color: #7cf2ff; line-height: 1; }
-#hud .letters { top: calc(112px + var(--safe-top)); }
+/* BUG 3 (visual) fix, part 2: at 112px this row's top edge sat only ~4px below the coins pill's own
+ * bottom edge (pause button + coins stack to roughly 108px), so the coin icon's glow/text-shadow
+ * visibly bled onto the first couple of letter tiles under real HUD state (jetpack/magnet/2X all
+ * active widens the powerbars column but the coin pill's vertical stack is unaffected — reproduced
+ * directly from the qa-visual harness's own in-run capture). Bumped for real clearance from the
+ * score/coins column above. */
+#hud .letters { top: calc(128px + var(--safe-top)); }
 
 /* speed effect while Turbo / jetpack / headstart is active */
 .speed-fx { position: absolute; inset: -20%; pointer-events: none; background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,255,255,0) 0deg 9deg, rgba(255,255,255,.22) 9deg 10.5deg); mask-image: radial-gradient(ellipse at 50% 45%, transparent 38%, #000 75%); -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 38%, #000 75%); animation: spin 1.2s linear infinite; opacity: 0; transition: opacity .3s; }
@@ -207,7 +248,16 @@ button { font-family: var(--font); cursor: pointer; }
 .seg { display: flex; gap: 4px; background: #efe6d3; border-radius: 12px; padding: 3px; }
 .segb { border: 0; border-radius: 9px; padding: 6px 12px; font-weight: 900; font-size: 13px; text-transform: uppercase; background: transparent; color: #6b7280; }
 .segb.on { background: var(--teal); color: #fff; box-shadow: 0 2px 0 var(--teal-dark); }
-#menu .toasts { top: 27%; }
+/* BUG 2 (visual) fix: this was `top:27%` — a percentage of the FULL screen height. The "Best:"
+ * line sits at a near-constant ~211-234px from the top regardless of viewport size (it's driven by
+ * the topbar + logo heights, both width-driven via clamp(), not by screen height), so 27% only
+ * cleared it on tall/narrow viewports (tablet, 1180px tall: 27%=319px) and fully buried it — 0px of
+ * "Best: … pts · … m" visible — on short viewports (phone 800px tall: 27%=216px; desktop landscape
+ * 800px tall: same) where the very first DAILY BONUS toast of the session lands squarely on top of
+ * it. Best is the number the player chases; the toast now anchors to a fixed offset below the
+ * logo/Best block instead, which stays clear of it at every aspect ratio while still landing well
+ * above "TAP TO PLAY". */
+#menu .toasts { top: calc(258px + var(--safe-top)); }
 
 /* arrest stamp: slams over the world during the death slow-mo, before the results panel */
 .arrest-stamp{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-8deg) scale(1.6);font-weight:900;font-size:64px;letter-spacing:.06em;color:#e0382b;-webkit-text-stroke:3px #fff;text-shadow:0 6px 0 rgba(0,0,0,.35);pointer-events:none;animation:stampIn .32s cubic-bezier(.2,1.6,.4,1) forwards}
@@ -215,8 +265,17 @@ button { font-family: var(--font); cursor: pointer; }
 .perk-bonus{color:#1fb2a6;font-weight:700;margin-top:2px}
 
 /* player profile name */
-.pill.name-pill { border: 0; cursor: pointer; color: #fff; font-family: var(--font); }
-.pill.name-pill .edit-ico { opacity: .7; font-size: 13px; }
+/* BUG 5 (visual) fix: a long name ("Muhammad Kamal") has no space to wrap to inside the topbar at
+ * phone width, but the raw text node had no white-space/overflow constraint, so the flex algorithm's
+ * automatic minimum size (min-content = width of the single longest unbreakable word, "Muhammad")
+ * let the whole pill shrink far enough that the text line-wrapped onto two lines — and the pencil
+ * (a separate flex item after it) got pushed out of the pill's line-boxes entirely, so the "edit
+ * name" affordance silently disappeared. The name is now its own flex item with min-width:0 so IT
+ * (not the pencil) is what shrinks, and ellipsis truncates instead of wrapping — the pencil, as a
+ * sibling with its own natural min-content size, is never squeezed and always stays visible. */
+.pill.name-pill { border: 0; cursor: pointer; color: #fff; font-family: var(--font); max-width: 55vw; }
+.pill.name-pill .name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill.name-pill .edit-ico { opacity: .7; font-size: 13px; flex: none; }
 .pill.name-pill:active { transform: translateY(2px); }
 /* game-over identity pill (was a 14px grey caption; now a real pill next to ARRESTED!) */
 .run-owner { display: table; margin: 0 auto 10px; font-size: 16px; font-weight: 900; color: var(--ink); background: #efe6d3; border-radius: 999px; padding: 5px 16px; box-shadow: 0 3px 0 #cdbfa3; }
@@ -228,7 +287,7 @@ button { font-family: var(--font); cursor: pointer; }
 .name-count { font-size: 12px; font-weight: 700; color: #9a8f78; font-variant-numeric: tabular-nums; flex: none; }
 .row.two-up { flex-wrap: nowrap; }
 .row.two-up .btn { flex: 1; padding: 13px 8px; font-size: 16px; text-align: center; }
-.btn:disabled.invalid { filter: grayscale(.9) brightness(.75); }
+.btn:disabled.invalid { background: #cdbfa3; color: #9a8f78; box-shadow: 0 3px 0 #b3a488; }
 .lb-row.run-row { flex-direction: column; align-items: stretch; gap: 2px; }
 .lb-row.run-row .lb-top { display: flex; align-items: center; gap: 8px; }
 .lb-row.run-row .rank { width: 28px; flex: none; font-size: 16px; }
@@ -245,6 +304,8 @@ button { font-family: var(--font); cursor: pointer; }
 
 /* shop: bike card silhouette (replaces the identical 🏍️ emoji on every card) */
 .bike-swatch svg { display: block; }
+.rider-swatch svg { display: block; }
+.mult-badge { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #3d8bff; color: #fff; font-weight: 900; font-size: 13px; box-shadow: 0 2px 0 rgba(0,0,0,.3); }
 
 /* shop: scroll affordance for lists that don't fully fit (e.g. 6 bikes at small screen heights).
  * BUG 2 fix: this used to be position:absolute over the bottom of .list, which overlapped and
@@ -254,8 +315,16 @@ button { font-family: var(--font); cursor: pointer; }
 .scroll-hint { text-align: center; font-size: 12px; font-weight: 900; color: var(--ink); padding: 6px 0 0; pointer-events: none; animation: pulse 1.4s ease-in-out infinite; }
 
 /* teargas: a green swimming haze + an explicit note that steering is inverted.
-   ponytail: gradients and transforms only, no blur filter — a full-screen blur tanks mid-range phones. */
-.dizzy-fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 1; transition: opacity .35s ease; }
+   ponytail: gradients and transforms only, no blur filter — a full-screen blur tanks mid-range phones.
+   BUG A fix: this is a direct child of #ui, and `#ui > * { pointer-events: auto; }` (line 11) is an
+   ID selector (specificity 1,0,0) which beats a bare `.dizzy-fx` class rule (0,1,0), so the old
+   `pointer-events: none` here was silently overridden — the haze sat on top of the whole screen and
+   ate every swipe/tap/click for the full dizzy duration (and if a pause happened mid-dizzy, the haze
+   outlived the pause and made Resume/Quit unreachable too: an unrecoverable soft-lock). Scoping the
+   selector to `#ui > .dizzy-fx` (specificity 1,1,0) beats `#ui > *` and actually sticks. Any future
+   overlay appended directly under #ui that must be click-through needs this same `#ui > .foo` form —
+   a bare class selector on its own can never out-rank `#ui > *`. */
+#ui > .dizzy-fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 1; transition: opacity .35s ease; }
 .dizzy-fx.out { opacity: 0; }
 .dizzy-haze { position: absolute; inset: -12%;
   background: radial-gradient(circle at 50% 55%, rgba(150,235,170,.10) 18%, rgba(86,200,115,.46) 58%, rgba(18,62,34,.80) 100%);
