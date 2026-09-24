@@ -1,6 +1,7 @@
 import { Assets } from './game/Assets.js';
 import { Game } from './game/Game.js';
 import { UI } from './ui/UI.js';
+import { UpdateCheck } from './game/UpdateCheck.js';
 
 const canvas = document.getElementById('game');
 const uiRoot = document.getElementById('ui');
@@ -13,6 +14,10 @@ assets.load((p) => ui.showLoading(p)).then(() => {
   ui.attach(game);
   window.__game = game;
   window.__ui = ui;
+  const updates = new UpdateCheck(ui);
+  ui.updates = updates;
+  window.__updates = updates;
+  updates.checkOnLaunch();
   const q = new URLSearchParams(location.search);
   if (q.get('auto')) { game.startRun({ startDistance: +(q.get('dist') || 0) }); ui.showHUD(); if (q.get('pu')) setTimeout(() => game._pickup(q.get('pu')), 1500); if (q.get('hover')) setTimeout(() => game.useHoverboard(), 1200); if (q.get('coins')) game.save.data.coins = +q.get('coins'); }
   else ui.showMenu();

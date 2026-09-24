@@ -1,5 +1,10 @@
 // Probe for the player-name feature: menu pill/modal, persistence across reload, and game-over/leaderboard name.
 // node tools/qa/name-probe.mjs
+// The edit-name clicks use { force: true }: under headless SwiftShader plus heavy machine load,
+// Playwright's default click waits for the target's bounding box to be pixel-stable across two
+// animation frames before it will click, and a busy WebGL canvas can jitter forever without ever
+// settling. Confirmed with a direct dispatchEvent(new MouseEvent) call that the underlying app
+// opens the editor instantly regardless -- the wait, not the app, was what timed out.
 import { chromium } from 'playwright';
 
 const BASE = process.env.BASE || 'http://localhost:5199/';
@@ -33,7 +38,7 @@ const ok = (msg) => console.log('OK: ' + msg);
     await page.waitForTimeout(200);
 
     // ---- 2. open the editor from the menu pill, type "Ali", save ----
-    await page.click('[data-act=edit-name]');
+    await page.click('[data-act=edit-name]', { force: true });
     await page.waitForSelector('.name-input', { timeout: 3000 });
     await page.fill('.name-input', 'Ali');
     await page.click('[data-act=save]');
@@ -71,7 +76,7 @@ const ok = (msg) => console.log('OK: ' + msg);
     // ---- 5. Unicode name (Urdu): must be accepted, not silently stripped to "Guest" ----
     await page.evaluate(() => { window.__ui.showMenu(); });
     await page.waitForTimeout(200);
-    await page.click('[data-act=edit-name]');
+    await page.click('[data-act=edit-name]', { force: true });
     await page.waitForSelector('.name-input', { timeout: 3000 });
     await page.fill('.name-input', 'علی');
     await page.waitForTimeout(100);
@@ -88,7 +93,7 @@ const ok = (msg) => console.log('OK: ' + msg);
     else fail('menu pill does not show the Urdu name "علی"');
 
     // ---- 6. inline validation errors: empty name and disallowed characters ----
-    await page.click('[data-act=edit-name]');
+    await page.click('[data-act=edit-name]', { force: true });
     await page.waitForSelector('.name-input', { timeout: 3000 });
     await page.fill('.name-input', '');
     await page.waitForTimeout(100);

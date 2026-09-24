@@ -538,6 +538,19 @@ export class UI {
     }
   }
 
+  /** Persistent, dismissible banner shown once a background update has finished downloading.
+   *  Deliberately not a self-dismissing toast: this should stay put until the player acts, since
+   *  it can appear mid-menu-browsing and easy to miss otherwise. */
+  toastUpdateReady() {
+    if (this.root.querySelector('.update-banner')) return;   // don't stack duplicates
+    const el = h(`<div class="update-banner"><span>Update ready</span><button class="btn small" data-act="restart">Restart</button><button class="icon-btn" data-act="dismiss">✕</button></div>`);
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-act="restart"]')) this.updates?.completeInstall();
+      if (e.target.closest('[data-act="dismiss"]')) el.remove();
+    });
+    this.root.appendChild(el);
+  }
+
   toast(text, cls = '') {
     if (!this.toastEl) return;
     const t = h(`<div class="toast ${cls}">${text}</div>`);
@@ -948,8 +961,10 @@ export class UI {
           <div class="setting">Voice<button class="switch ${st.voice !== false ? 'on' : ''}" data-set="voice"></button></div>
           <div class="setting">Vibration<button class="switch ${st.haptics ? 'on' : ''}" data-set="haptics"></button></div>
           <div class="setting">Quality<div class="seg">${['low', 'auto', 'high'].map((q) => `<button class="segb ${(st.quality || 'auto') === q ? 'on' : ''}" data-quality="${q}">${q}</button>`).join('')}</div></div>
+          <div class="setting" style="justify-content:center"><button class="btn sec small" data-act="check-update">Check for updates</button></div>
           <div class="setting" style="justify-content:center"><button class="btn red small" data-act="reset">Reset progress</button></div>
         </div>
+        <div class="small-note" id="update-status"></div>
         <div class="small-note">Islamabad Runner 3D · v1.0 · Made with love in Islamabad.<br>No ads, no tracking, no data leaves your phone.</div>
       </div></div></div>`);
     el.addEventListener('click', (e) => {
@@ -964,6 +979,19 @@ export class UI {
       const a = e.target.closest('[data-act]'); if (!a) return;
       if (a.dataset.act === 'back') { this.game.audio.click(); this.showMenu(); }
       if (a.dataset.act === 'reset') { if (confirm('Reset all progress? This cannot be undone.')) { this.game.save.reset(); location.reload(); } }
+      if (a.dataset.act === 'check-update') {
+        this.game.audio.click();
+        const status = el.querySelector('#update-status');
+        if (status) status.textContent = 'Checking…';
+        this.updates?.checkManually().then((r) => {
+          if (!status) return;
+          status.textContent = { 'up-to-date': "You're on the latest version.",
+            'downloading': 'Update downloading in the background — you\'ll be asked to restart when it\'s ready.',
+            'updating': 'Update starting…',
+            'available-but-blocked': 'An update is available but could not start automatically. Try the Play Store.',
+            'unavailable': 'Update check is only available for the Play Store version of the app.' }[r.status] || '';
+        });
+      }
     });
     this.root.appendChild(el);
   }
