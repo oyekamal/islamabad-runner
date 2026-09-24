@@ -7,6 +7,7 @@ import { Effects } from './Effects.js';
 import { Input } from './Input.js';
 import { Audio } from './Audio.js';
 import { Save } from './Save.js';
+import { WeatherCheck } from './WeatherCheck.js';
 import { CHARACTERS, BIKES } from '../data/characters.js';
 import { MISSION_SETS, MAX_MULTIPLIER, DAILY_WORDS, DAILY_REWARDS } from '../data/missions.js';
 
@@ -17,6 +18,28 @@ const FLY_ALTITUDE = 4.2;
 const DIZZY_TIME = 5;         // seconds of teargas wooziness (does not stack past this)
 const STEP = 1 / 60;          // fixed simulation substep
 const MAX_STEPS = 4;          // per rendered frame; anything beyond is dropped
+
+// ---------------------------------------------------------------- weather presets (WeatherCheck.js)
+// "Night" is a bright dusk/blue-hour palette on purpose — Kamal was explicit that night must never
+// read as dark or hard to see. MIN_HEMI/MIN_SUN are hard floors so no weather x night combination
+// can push the scene below a playable brightness; weather-probe.mjs enforces this with a real
+// pixel-luminance sample against day.
+const SKY_DAY = { top: 0x4aa3ff, mid: 0x9dd3ff, bottom: 0xf2f6ff };
+const SKY_NIGHT = { top: 0x1c3663, mid: 0x3f6aa8, bottom: 0x8fb0d6 };
+const WEATHER_BASE = {
+  day: { sky: SKY_DAY, fog: 0xc9e6ff, fogNear: 60, fogFar: 230, hemi: 1.25, sunColor: 0xfff4e0, sunI: 1.9 },
+  night: { sky: SKY_NIGHT, fog: 0x3c6190, fogNear: 55, fogFar: 210, hemi: 1.05, sunColor: 0xbcd4ff, sunI: 1.55 },
+};
+const WEATHER_TWEAK = {
+  clear: { hemiMul: 1, sunMul: 1, fogNearMul: 1, fogFarMul: 1, tint: null, rain: false, snow: false },
+  cloudy: { hemiMul: 0.85, sunMul: 0.78, fogNearMul: 1, fogFarMul: 0.92, tint: 0x9fb0c4, rain: false, snow: false },
+  haze: { hemiMul: 0.9, sunMul: 0.82, fogNearMul: 0.42, fogFarMul: 0.55, tint: 0xcdc3a4, rain: false, snow: false },   // real Islamabad smog: flat, close fog
+  rain: { hemiMul: 0.82, sunMul: 0.7, fogNearMul: 0.85, fogFarMul: 0.8, tint: 0x7d93ab, rain: true, snow: false, intensity: 1 },
+  storm: { hemiMul: 0.75, sunMul: 0.6, fogNearMul: 0.7, fogFarMul: 0.65, tint: 0x5c6b80, rain: true, snow: false, intensity: 1.8 },
+  snow: { hemiMul: 1.05, sunMul: 0.95, fogNearMul: 0.9, fogFarMul: 0.85, tint: 0xeaf1fb, rain: false, snow: true },
+};
+const MIN_HEMI = 0.78;   // floor: never below ~62% of the base day hemisphere, even storm+night stacked
+const MIN_SUN = 0.85;    // floor: never below ~45% of the base day sun, even storm+night stacked
 
 export class Game {
   constructor(canvas, assets) {
@@ -50,6 +73,13 @@ export class Game {
     this.track = new Track(assets, this.scene, this);
     this.fx = new Effects(this.scene);
     this._buildSkyline();
+
+    // Islamabad weather + day/night (WeatherCheck.js). Never blocks boot: effective() returns a
+    // safe default (clear, device-hour day/night guess) the instant it's created, and the real
+    // fetch (if any) is fire-and-forget — _applyWeather just gets called again if/when it resolves.
+    this.weather = new WeatherCheck();
+    this._applyWeather(this.weather.effective());
+    this.weather.on(() => this._applyWeather(this.weather.effective()));
 
     this.input = new Input(canvas);
     this.input.on((t) => this._onInput(t));
@@ -118,7 +148,8 @@ export class Game {
   }
 
   _buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8fa3b8, 1.25));
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x8fa3b8, 1.25);
+    this.scene.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.9);
     sun.position.set(-6, 14, 8);
     sun.castShadow = true;
@@ -154,6 +185,35 @@ export class Game {
       add('building_' + (i % 6), s * (45 + Math.random() * 40), -160 - i * 18, s * Math.PI / 2 + (Math.random() - 0.5), 1.6 + Math.random() * 1.6);
     }
     this.scene.add(this.skyline);
+  }
+
+  /** Apply a {bucket, is_day} weather reading to sky/fog/lights + arm rain/snow particles.
+   *  Called once immediately with the safe default, and again whenever WeatherCheck resolves a
+   *  real fetch. Never touches gameplay/collision — visuals + `_weatherRain`/`_weatherSnow` flags only. */
+  _applyWeather(state) {
+    const base = state.is_day ? WEATHER_BASE.day : WEATHER_BASE.night;
+    const tweak = WEATHER_TWEAK[state.bucket] || WEATHER_TWEAK.clear;
+    const skyU = this.sky.material.uniforms;
+    skyU.top.value.set(base.sky.top);
+    skyU.mid.value.set(base.sky.mid);
+    skyU.bottom.value.set(base.sky.bottom);
+    const fogColor = new THREE.Color(base.fog);
+    if (tweak.tint != null) {
+      const tint = new THREE.Color(tweak.tint);
+      skyU.top.value.lerp(tint, 0.25);
+      skyU.mid.value.lerp(tint, 0.2);
+      skyU.bottom.value.lerp(tint, 0.12);
+      fogColor.lerp(tint, 0.4);
+    }
+    this.scene.fog.color.copy(fogColor);
+    this.scene.fog.near = Math.max(18, base.fogNear * tweak.fogNearMul);
+    this.scene.fog.far = Math.max(this.scene.fog.near + 60, base.fogFar * tweak.fogFarMul);
+    this.hemi.intensity = Math.max(MIN_HEMI, base.hemi * tweak.hemiMul);
+    this.sun.intensity = Math.max(MIN_SUN, base.sunI * tweak.sunMul);
+    this.sun.color.set(base.sunColor);
+    this._weatherRain = !!tweak.rain;
+    this._weatherSnow = !!tweak.snow;
+    this._weatherIntensity = tweak.intensity || 1;
   }
 
   /** DPR + shadow settings for a quality tier (antialias can't change after renderer creation). */
@@ -723,6 +783,9 @@ export class Game {
     // fell off a train? nothing special. Jetpack flame
     if (this.powerups.jetpack > 0 && p.flying) this.track.airCoins(p.z, p.flyAltitude);
     if (p.flying) { this.fx.jet(p.x - 0.22, p.y + 0.7, p.z + 0.4); this.fx.jet(p.x + 0.22, p.y + 0.7, p.z + 0.4); }
+    // weather particles (WeatherCheck.js) — spawn ahead of the player, purely cosmetic
+    if (this._weatherRain && Math.random() < dt * 16 * this._weatherIntensity) this.fx.rain(p.x + (Math.random() - 0.5) * 7, p.y + 6 + Math.random() * 3, p.z - 8 - Math.random() * 25);
+    if (this._weatherSnow && Math.random() < dt * 7) this.fx.snow(p.x + (Math.random() - 0.5) * 7, p.y + 6 + Math.random() * 3, p.z - 8 - Math.random() * 25);
         if (p.grounded && !p.flying && Math.random() < dt * 10) this.fx.dust(p.x, p.y, p.z + 1.0, 1);
     if (p.hover && p.grounded) { this.fx.hoverTrail(p.x + 0.2, p.y + 0.6, p.z + 1.4); this.fx.turboTrail(p.x, p.y + 0.3, p.z + 1.2); this.camShake = Math.max(this.camShake, 0.08); }
     if (p.rolling > 0 && p.grounded) this.fx.sparks(p.x + 0.55, p.y + 0.08, p.z + 0.3);

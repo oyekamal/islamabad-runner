@@ -2,6 +2,7 @@ import { CHARACTERS, BIKES } from '../data/characters.js';
 import { MISSION_SETS, MAX_MULTIPLIER, DAILY_REWARDS } from '../data/missions.js';
 import { POWERUP_UPGRADE_COST, HOVERBOARD_COST, HEADSTART_COST, SCORE_BOOSTER_COST, MYSTERY_BOX_COST, BUBBLES_PER_TURBO } from '../game/constants.js';
 import { ACHIEVEMENTS, rewardText } from '../data/achievements.js';
+import { bucketIcon } from '../game/WeatherCheck.js';
 
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -264,6 +265,18 @@ export class UI {
     game.on('runStart', () => { this._closeCallsStatAtStart = game.save.data.stats.closeCalls || 0; });
     game.on('runFinished', (r) => this._onRunFinished(r));
     document.addEventListener('visibilitychange', () => { if (document.hidden && game.state === 'running') game.pause(); });
+    // Weather badge (WeatherCheck.js): fetch is async and may resolve while the menu is already
+    // open, so re-render the menu topbar when a real reading lands — but only if the menu is still
+    // the visible screen, so a resolve mid-run/shop doesn't yank the player back.
+    game.weather.on(() => { if (this.root.querySelector('#menu')) this.showMenu(); });
+  }
+
+  /** Small topbar pill: icon + °C. Nothing rendered until a real weather reading has ever landed
+   *  (live this session, or cached from a previous one) — never a fake/placeholder value. */
+  _weatherBadgeHtml() {
+    const w = this.game.weather.state;
+    if (!w.bucket || typeof w.tempC !== 'number') return '';
+    return `<span class="pill weather-pill" aria-label="Islamabad weather">${bucketIcon(w.bucket)} ${w.tempC}°C</span>`;
   }
 
   /** Lifetime stats Game doesn't track + badge awards. Runs on every 'runFinished'. */
@@ -319,6 +332,7 @@ export class UI {
         <span class="pill"><i class="ico coin">$</i>${fmt(s.coins)}</span>
         <span class="pill"><i class="ico key">⚷</i>${s.keys}</span>
         <span class="spacer"></span>
+        ${this._weatherBadgeHtml()}
         <button class="icon-btn" data-act="settings" aria-label="Settings">⚙</button>
       </div>
       <div class="center" data-act="play">

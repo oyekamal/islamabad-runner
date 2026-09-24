@@ -51,6 +51,10 @@ export class Effects {
   sparks(x, y, z) { this.burst(x, y, z, { count: 3, color: Math.random() < 0.5 ? 0xffd53d : 0xffffff, speed: 4, life: 0.3, size: 0.12, up: 1.2, vz: 3, gravity: 12 }); }
   turboTrail(x, y, z) { this.burst(x, y, z, { count: 2, color: Math.random() < 0.5 ? 0xff7a1a : 0xffd53d, speed: 1.2, life: 0.35, size: 0.4, up: 0.6, vz: 4, gravity: 0 }); }
   hoverTrail(x, y, z) { this.burst(x, y, z, { count: 1, color: 0x7cf2ff, speed: 0.4, life: 0.3, size: 0.3, up: 0.3, vz: 1.5, gravity: 0 }); }
+  // Weather layer (WeatherCheck.js). Streaks fall fast + accelerate (negative gravity pulls the
+  // downward vy further negative each frame); snow drifts slow with almost no acceleration.
+  rain(x, y, z) { this.burst(x, y, z, { count: 2, color: 0xbcd6f0, speed: 5, life: 0.45, size: 0.1, up: -1, vz: 3, gravity: -9 }); }
+  snow(x, y, z) { this.burst(x, y, z, { count: 1, color: 0xffffff, speed: 0.8, life: 1.4, size: 0.18, up: -0.6, vz: 0.6, gravity: -0.3 }); }
 
   update(dt) {
     let i = 0;
